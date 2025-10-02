@@ -1,0 +1,41 @@
+node_modules/
+dist/
+build/
+coverage/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependency directories
+.pnp
+.pnp.js
+
+# Testing
+.nyc_output
+
+# Production build artifacts
+*.tgz
+
+# Environment variables
+.env
+.env.*
+
+# Caches
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# OS artifacts
+.DS_Store
+Thumbs.db
