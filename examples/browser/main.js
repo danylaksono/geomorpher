@@ -1,5 +1,9 @@
 import L from "npm:leaflet";
-import { GeoMorpher, createLeafletMorphLayers } from "../../src/index.js";
+import {
+  GeoMorpher,
+  createLeafletMorphLayers,
+  createLeafletGlyphLayer,
+} from "../../src/index.js";
 
 const formatStat = (value) => value.toLocaleString(undefined, {
   maximumFractionDigits: 0,
@@ -11,6 +15,7 @@ const factorValue = document.getElementById("factorValue");
 const regularCountEl = document.getElementById("count-regular");
 const cartogramCountEl = document.getElementById("count-cartogram");
 const basemapToggle = document.getElementById("basemapBlurToggle");
+const glyphLegendEl = document.getElementById("glyphLegend");
 
 async function fetchJSON(fileName) {
   const url = new URL(`../../data/${fileName}`, import.meta.url);
@@ -53,6 +58,10 @@ async function bootstrap() {
     const map = L.map("map", { preferCanvas: true });
     map.setView([51.752, -1.2577], 12);
 
+    const glyphPane = map.createPane("glyphs");
+    glyphPane.style.zIndex = 650;
+    glyphPane.style.pointerEvents = "none";
+
     const basemapLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18,
       attribution:
@@ -63,6 +72,58 @@ async function bootstrap() {
     factorValue.textContent = initialFactor.toFixed(2);
     let currentMorphFactor = initialFactor;
     let basemapEffectEnabled = basemapToggle ? basemapToggle.checked : true;
+
+    const categories = [
+      { key: "population", label: "Population", color: "#4e79a7" },
+      { key: "households", label: "Households", color: "#f28e2c" },
+    ];
+
+    if (glyphLegendEl) {
+      glyphLegendEl.innerHTML = "";
+      for (const { key, label, color } of categories) {
+        const item = document.createElement("li");
+        item.className = "legend-item";
+        item.innerHTML = `
+          <span class="legend-swatch" style="background: ${color}"></span>
+          <span>${label} <small style="color: #94a3b8; font-size: 0.8rem;">(${key})</small></span>
+        `;
+        glyphLegendEl.appendChild(item);
+      }
+    }
+
+    const createPieChartSVG = (slices, { size = 56, stroke = "white" } = {}) => {
+      const radius = size / 2;
+      const center = radius;
+
+      const total = slices.reduce((sum, slice) => sum + Math.max(0, slice.value), 0);
+      if (!Number.isFinite(total) || total <= 0) {
+        return `<svg width="${size}" height="${size}"></svg>`;
+      }
+
+      let currentAngle = -Math.PI / 2;
+      const segments = slices
+        .filter((slice) => Number.isFinite(slice.value) && slice.value > 0)
+        .map((slice) => {
+          const angle = (slice.value / total) * Math.PI * 2;
+          const endAngle = currentAngle + angle;
+          const largeArc = angle > Math.PI ? 1 : 0;
+          const startX = center + radius * Math.cos(currentAngle);
+          const startY = center + radius * Math.sin(currentAngle);
+          const endX = center + radius * Math.cos(endAngle);
+          const endY = center + radius * Math.sin(endAngle);
+          const path = [
+            `M ${center} ${center}`,
+            `L ${startX.toFixed(2)} ${startY.toFixed(2)}`,
+            `A ${radius} ${radius} 0 ${largeArc} 1 ${endX.toFixed(2)} ${endY.toFixed(2)}`,
+            "Z",
+          ].join(" ");
+          currentAngle = endAngle;
+          return `<path d="${path}" fill="${slice.color}" stroke="${stroke}" stroke-width="1"></path>`;
+        });
+
+      const content = segments.join("");
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${content}</svg>`;
+    };
 
     const { group, regularLayer, tweenLayer, cartogramLayer, updateMorphFactor } =
       await createLeafletMorphLayers({
@@ -86,10 +147,43 @@ async function bootstrap() {
 
     group.addTo(map);
 
+    const glyphControls = await createLeafletGlyphLayer({
+      morpher,
+      L,
+      map,
+      geometry: "interpolated",
+      morphFactor: initialFactor,
+      pane: "glyphs",
+      drawGlyph: ({ data, feature }) => {
+        const properties = data?.data?.properties ?? feature.properties ?? {};
+        const slices = categories
+          .map(({ key, color }) => ({
+            key,
+            color,
+            value: Number(properties?.[key] ?? 0),
+          }))
+          .filter((slice) => slice.value > 0);
+
+        if (slices.length === 0) {
+          return null;
+        }
+
+        return {
+          html: createPieChartSVG(slices, { size: 52 }),
+          className: "pie-chart-marker",
+          iconSize: [52, 52],
+          iconAnchor: [26, 26],
+        };
+      },
+    });
+
+    const glyphLayer = glyphControls.layer;
+
     const overlays = {
       "Regular geography": regularLayer,
       "Tween morph": tweenLayer,
       "Cartogram geography": cartogramLayer,
+      "Pie glyphs": glyphLayer,
     };
 
     L.control.layers(null, overlays, {
@@ -110,12 +204,14 @@ async function bootstrap() {
       factorValue.textContent = value.toFixed(2);
       currentMorphFactor = value;
       updateMorphFactor(value);
+      glyphControls.updateGlyphs({ morphFactor: value });
     });
 
     if (basemapToggle) {
       basemapToggle.addEventListener("change", (event) => {
         basemapEffectEnabled = event.target.checked;
         updateMorphFactor(currentMorphFactor);
+        glyphControls.updateGlyphs({ morphFactor: currentMorphFactor });
       });
     }
 

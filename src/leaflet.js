@@ -1,1 +1,1 @@
-export { createLeafletMorphLayers } from "./adapters/leaflet.js";
+export { createLeafletMorphLayers, createLeafletGlyphLayer } from "./adapters/leaflet.js";

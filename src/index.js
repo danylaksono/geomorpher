@@ -1,7 +1,7 @@
 import { GeoMorpher } from "./core/geomorpher.js";
-import { createLeafletMorphLayers } from "./adapters/leaflet.js";
+import { createLeafletMorphLayers, createLeafletGlyphLayer } from "./adapters/leaflet.js";
 
-export { GeoMorpher, createLeafletMorphLayers };
+export { GeoMorpher, createLeafletMorphLayers, createLeafletGlyphLayer };
 
 export async function geoMorpher(options) {
 	const morpher = new GeoMorpher(options);

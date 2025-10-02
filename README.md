@@ -1,6 +1,6 @@
 # geo-morpher
 
-Imperative GeoJSON morphing utilities for animating between regular geography and cartograms, now packaged as a native JavaScript library with first-class Leaflet helpers.
+Imperative GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with first-class Leaflet helpers.
 
 ## Installation
 
@@ -93,6 +93,69 @@ updateMorphFactor(0.75);
 ```
 
 Provide either `basemapLayer` (any Leaflet layer with a container) or `basemapEffect.target` to tell the helper which element to manipulate. By default the basemap will progressively blur and fade as the morph factor approaches 1, but you can adjust the ranges—or add brightness/grayscale tweaks—to match your design. You can also wire up UI to toggle the behaviour at runtime by returning `false` from `basemapEffect.isEnabled`.
+
+### 3. Overlay multivariate glyphs
+
+Bring your own SVG/HTML drawing function to turn each feature into a custom glyph (pie charts, sparklines, radar plots—anything you can render inside a `div` icon). The helper keeps markers in sync with the current geography so they glide with the morph.
+
+```js
+import {
+  GeoMorpher,
+  createLeafletMorphLayers,
+  createLeafletGlyphLayer,
+} from "geo-morpher";
+
+const categories = [
+  { key: "population", color: "#4e79a7" },
+  { key: "households", color: "#f28e2c" },
+];
+
+const drawPie = ({ data, feature }) => {
+  const properties = data?.data?.properties ?? feature.properties ?? {};
+  const slices = categories
+    .map(({ key, color }) => ({
+      value: Number(properties[key] ?? 0),
+      color,
+    }))
+    .filter((slice) => slice.value > 0);
+
+  if (slices.length === 0) return null;
+
+  const svg = buildPieSVG(slices); // your own renderer (D3, Canvas, vanilla SVG...)
+  return {
+    html: svg,
+    className: "pie-chart-marker",
+    iconSize: [52, 52],
+    iconAnchor: [26, 26],
+  };
+};
+
+const glyphLayer = await createLeafletGlyphLayer({
+  morpher,
+  L,
+  map,
+  geometry: "interpolated",
+  morphFactor: 0.25,
+  pane: "glyphs",
+  drawGlyph: drawPie,
+});
+
+// Keep glyphs synced with the tweened geometry
+slider.addEventListener("input", (event) => {
+  const value = Number(event.target.value);
+  updateMorphFactor(value);
+  glyphLayer.updateGlyphs({ morphFactor: value });
+});
+```
+
+`drawGlyph` receives `{ feature, featureId, data, morpher, geometry, morphFactor }` and can return:
+
+- `null`/`undefined` to skip the feature
+- A plain HTML string or DOM node
+- An object with `html`, `iconSize`, `iconAnchor`, `className`, `pane`, and optional `markerOptions`
+- Or an object containing a pre-built `icon` (any Leaflet `Icon`), if you need full control
+
+Optionally provide `getGlyphData` or `filterFeature` callbacks to customise how data/visibility is resolved. When you call `glyphLayer.clear()` all markers are removed; `glyphLayer.getState()` exposes the current geometry, morph factor, and marker count.
 
 ### Legacy wrapper
 

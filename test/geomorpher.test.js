@@ -17,7 +17,12 @@ const [regularGeoJSON, cartogramGeoJSON] = await Promise.all([
   loadJSON("data/oxford_lsoas_cartogram.json"),
 ]);
 
-import { GeoMorpher, geoMorpher, createLeafletMorphLayers } from "../src/index.js";
+import {
+  GeoMorpher,
+  geoMorpher,
+  createLeafletMorphLayers,
+  createLeafletGlyphLayer,
+} from "../src/index.js";
 
 const sampleData = [
   {
@@ -160,4 +165,135 @@ test("Leaflet helper produces layer group", async () => {
   updateMorphFactor(0.9);
   assert.equal(basemapContainer.style.filter, "blur(4.50px)");
   assert.equal(basemapContainer.style.opacity, "0.280");
+});
+
+test("Glyph layer renders markers and updates with morph factor", async () => {
+  const morpher = new GeoMorpher({
+    regularGeoJSON,
+    cartogramGeoJSON,
+    data: sampleData,
+    aggregations: {
+      population: "sum",
+      households: "sum",
+    },
+  });
+  await morpher.prepare();
+
+  class FakeDivIcon {
+    constructor(options) {
+      this.options = options;
+    }
+  }
+
+  class FakeMarker {
+    constructor(latlng, options = {}) {
+      this.latlng = latlng;
+      this.options = options;
+      this.icon = options.icon ?? null;
+      this.parentGroup = null;
+    }
+
+    setLatLng(latlng) {
+      this.latlng = latlng;
+    }
+
+    setIcon(icon) {
+      this.icon = icon;
+    }
+
+    addTo(group) {
+      if (group?.addLayer) {
+        group.addLayer(this);
+      }
+      return this;
+    }
+
+    remove() {
+      if (this.parentGroup?.removeLayer) {
+        this.parentGroup.removeLayer(this);
+      }
+    }
+  }
+
+  class FakeLayerGroup {
+    constructor() {
+      this.layers = new Set();
+      this.addedTo = null;
+    }
+
+    addLayer(layer) {
+      if (!layer) return;
+      this.layers.add(layer);
+      layer.parentGroup = this;
+    }
+
+    removeLayer(layer) {
+      this.layers.delete(layer);
+    }
+
+    clearLayers() {
+      this.layers.clear();
+    }
+
+    addTo(mapLike) {
+      this.addedTo = mapLike;
+      return this;
+    }
+  }
+
+  const L = {
+    layerGroup() {
+      return new FakeLayerGroup();
+    },
+    divIcon(options) {
+      return new FakeDivIcon(options);
+    },
+    marker(latlng, options) {
+      return new FakeMarker(latlng, options);
+    },
+  };
+
+  let drawCount = 0;
+
+  const glyphLayer = await createLeafletGlyphLayer({
+    morpher,
+    L,
+    geometry: "regular",
+    drawGlyph: ({ data, featureId }) => {
+      drawCount += 1;
+      if (!data) return null;
+      const population = data.population ?? 0;
+      return {
+        html: `<div data-code="${featureId}">${population}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      };
+    },
+    markerOptions: {
+      interactive: false,
+    },
+  });
+
+  const { layer, getState, updateGlyphs } = glyphLayer;
+
+  assert.ok(layer instanceof FakeLayerGroup);
+  assert.ok(layer.layers.size > 0);
+  const initialState = getState();
+  assert.equal(initialState.geometry, "regular");
+  assert.equal(initialState.morphFactor, 0);
+  assert.equal(initialState.markerCount, layer.layers.size);
+  assert.ok(drawCount > 0);
+
+  const updateResult = updateGlyphs({ geometry: "interpolated", morphFactor: 0.75 });
+  assert.equal(updateResult.geometry, "interpolated");
+  assert.equal(updateResult.morphFactor, 0.75);
+  assert.equal(updateResult.featureCount, layer.layers.size);
+
+  const afterState = getState();
+  assert.equal(afterState.geometry, "interpolated");
+  assert.equal(afterState.morphFactor, 0.75);
+  assert.equal(afterState.markerCount, layer.layers.size);
+
+  glyphLayer.clear();
+  assert.equal(layer.layers.size, 0);
 });
