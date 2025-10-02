@@ -1,0 +1,41 @@
+{
+    "name": "geo-morpher",
+    "version": "0.1.0",
+    "description": "Imperative GeoJSON morphing utilities with Leaflet integration",
+    "type": "module",
+    "main": "morphs.js",
+    "exports": {
+        ".": "./morphs.js",
+        "./leaflet": "./src/adapters/leaflet.js",
+        "./adapters/leaflet": "./src/adapters/leaflet.js",
+        "./core/geomorpher": "./src/core/geomorpher.js"
+    },
+    "files": [
+        "morphs.js",
+        "src",
+        "data",
+        "examples",
+        "README.md"
+    ],
+    "scripts": {
+        "test": "node --test",
+        "examples:browser": "npx http-server -p 4173 ."
+    },
+    "keywords": [
+        "leaflet",
+        "geojson",
+        "cartogram",
+        "flubber",
+        "morph"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@turf/turf": "^6.5.0",
+        "flubber": "^0.4.2",
+        "lodash": "^4.17.21"
+    },
+    "peerDependencies": {
+        "leaflet": ">=1.7.0"
+    }
+}
