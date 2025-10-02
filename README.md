@@ -2,6 +2,9 @@
 
 Imperative GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with first-class Leaflet helpers.
 
+![](demo.gif)
+
+
 ## Installation
 
 ```bash
@@ -156,6 +159,33 @@ slider.addEventListener("input", (event) => {
 - Or an object containing a pre-built `icon` (any Leaflet `Icon`), if you need full control
 
 Optionally provide `getGlyphData` or `filterFeature` callbacks to customise how data/visibility is resolved. When you call `glyphLayer.clear()` all markers are removed; `glyphLayer.getState()` exposes the current geometry, morph factor, and marker count.
+
+#### Data contract for glyphs
+
+By default `createLeafletGlyphLayer` will surface whatever the core `GeoMorpher` knows about the current feature via `morpher.getKeyData()`:
+
+| field        | type     | description |
+|--------------|----------|-------------|
+| `feature`    | GeoJSON Feature | The rendered feature taken from the requested geography (`regular`, `cartogram`, or tweened). Includes `feature.properties` and a `centroid` array. |
+enum{} | Resolved via `getFeatureId(feature)` (defaults to `feature.properties.code ?? feature.properties.id`). |
+| `featureId`  | string  | Resolved via `getFeatureId(feature)` (defaults to `feature.properties.code ?? feature.properties.id`). |
+| `data`       | object \| null | When using the built-in lookup this is the morpher key entry: `{ code, population, data }`. The `data` property holds the *enriched* GeoJSON feature returned from `GeoMorpher.prepare()`—handy when you stored additional indicators during enrichment. |
+| `morpher`    | `GeoMorpher` | The instance you passed in, allowing on-demand queries (`getInterpolatedLookup`, etc.). |
+| `geometry`   | string \| function | The geometry source currently in play (`regular`, `cartogram`, or `interpolated`). |
+| `morphFactor`| number  | The morph factor used for the last update (only meaningful when geometry is `interpolated`). |
+
+If you want a different data shape, supply `getGlyphData`:
+
+```js
+const glyphLayer = await createLeafletGlyphLayer({
+  morpher,
+  L,
+  drawGlyph,
+  getGlyphData: ({ featureId }) => externalStatsById[featureId],
+});
+```
+
+The callback receives the same context object (minus the final `data` field) and should return whatever payload your renderer expects. `filterFeature(context)` lets you drop glyphs entirely (return `false`) for a given feature.
 
 ### Legacy wrapper
 
