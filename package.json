@@ -6,7 +6,9 @@
     "main": "morphs.js",
     "exports": {
         ".": "./morphs.js",
-        "./leaflet": "./src/adapters/leaflet.js",
+        "./leaflet": "./src/adapters/leaflet/index.js",
+        "./leaflet/morph": "./src/adapters/leaflet/morphLayers.js",
+        "./leaflet/glyph": "./src/adapters/leaflet/glyphLayer.js",
         "./adapters/leaflet": "./src/adapters/leaflet.js",
         "./core/geomorpher": "./src/core/geomorpher.js"
     },

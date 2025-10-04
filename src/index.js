@@ -1,5 +1,5 @@
 import { GeoMorpher } from "./core/geomorpher.js";
-import { createLeafletMorphLayers, createLeafletGlyphLayer } from "./adapters/leaflet.js";
+import { createLeafletMorphLayers, createLeafletGlyphLayer } from "./adapters/leaflet/index.js";
 
 export { GeoMorpher, createLeafletMorphLayers, createLeafletGlyphLayer };
 
