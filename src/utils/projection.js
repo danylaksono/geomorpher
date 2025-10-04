@@ -40,10 +40,13 @@ export function transformGeometry(geometry, projection = DEFAULT_PROJECTION) {
 
 export function toWGS84FeatureCollection(fc, projection = DEFAULT_PROJECTION) {
   if (!fc) return fc;
+  
+  // Use default projection if null/undefined
+  const proj = projection || DEFAULT_PROJECTION;
 
   const cloned = cloneDeep(fc);
   turf.coordEach(cloned, (coord) => {
-    const [lng, lat] = projection.toGeo(coord);
+    const [lng, lat] = proj.toGeo(coord);
     coord[0] = lng;
     coord[1] = lat;
   });

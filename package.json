@@ -28,7 +28,12 @@
         "geojson",
         "cartogram",
         "flubber",
-        "morph"
+        "morph",
+        "projection",
+        "wgs84",
+        "osgb",
+        "coordinate-transformation",
+        "gis"
     ],
     "author": "",
     "license": "MIT",

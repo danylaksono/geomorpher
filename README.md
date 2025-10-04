@@ -52,6 +52,43 @@ const cartogram = morpher.getCartogramFeatureCollection();
 const tween = morpher.getInterpolatedFeatureCollection(0.5);
 ```
 
+#### Using custom projections
+
+By default, `GeoMorpher` assumes input data is in **OSGB** (British National Grid) and converts to WGS84 for Leaflet. If your data is in a different coordinate system, pass a custom projection:
+
+```js
+import { GeoMorpher, WGS84Projection, isLikelyWGS84 } from "geo-morpher";
+
+// Auto-detect coordinate system
+const detectedProjection = isLikelyWGS84(regularGeoJSON);
+console.log("Detected:", detectedProjection); // 'WGS84', 'OSGB', or 'UNKNOWN'
+
+// For data already in WGS84 (lat/lng)
+const morpher = new GeoMorpher({
+  regularGeoJSON,
+  cartogramGeoJSON,
+  projection: WGS84Projection, // No transformation needed
+});
+
+// For Web Mercator data
+import { WebMercatorProjection } from "geo-morpher";
+const morpher = new GeoMorpher({
+  regularGeoJSON,
+  cartogramGeoJSON,
+  projection: WebMercatorProjection,
+});
+
+// Custom projection (e.g., using proj4)
+const customProjection = {
+  toGeo: ([x, y]) => {
+    // Transform [x, y] to [lng, lat]
+    return [lng, lat];
+  }
+};
+```
+
+See `examples/custom-projection.js` for detailed examples.
+
 ### 2. Drop the morph straight into Leaflet
 
 ```js
@@ -99,7 +136,9 @@ Provide either `basemapLayer` (any Leaflet layer with a container) or `basemapEf
 
 ### 3. Overlay multivariate glyphs
 
-Bring your own SVG/HTML drawing function to turn each feature into a custom glyph (pie charts, sparklines, radar plots—anything you can render inside a `div` icon). The helper keeps markers in sync with the current geography so they glide with the morph.
+The glyph system is **completely customizable** with no hardcoded chart types. You provide a rendering function that can return any visualization you can create with HTML, SVG, Canvas, or third-party libraries like D3.js or Chart.js. The helper automatically keeps markers positioned and synchronized with the morphing geometry.
+
+**Example with pie charts:**
 
 ```js
 import {
@@ -154,9 +193,22 @@ slider.addEventListener("input", (event) => {
 `drawGlyph` receives `{ feature, featureId, data, morpher, geometry, morphFactor }` and can return:
 
 - `null`/`undefined` to skip the feature
-- A plain HTML string or DOM node
+- A plain HTML string or DOM element
 - An object with `html`, `iconSize`, `iconAnchor`, `className`, `pane`, and optional `markerOptions`
 - Or an object containing a pre-built `icon` (any Leaflet `Icon`), if you need full control
+
+**Configuration object properties:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `html` | string \| HTMLElement | - | Your custom HTML/SVG string or DOM element |
+| `className` | string | `"geomorpher-glyph"` | CSS class for the marker |
+| `iconSize` | [number, number] | `[48, 48]` | Width and height in pixels |
+| `iconAnchor` | [number, number] | `[24, 24]` | Anchor point in pixels (center by default) |
+| `pane` | string | - | Leaflet pane name for z-index control |
+| `markerOptions` | object | `{}` | Additional Leaflet marker options |
+| `divIconOptions` | object | `{}` | Additional Leaflet divIcon options |
+| `icon` | L.Icon | - | Pre-built Leaflet icon (overrides all other options) |
 
 Optionally provide `getGlyphData` or `filterFeature` callbacks to customise how data/visibility is resolved. When you call `glyphLayer.clear()` all markers are removed; `glyphLayer.getState()` exposes the current geometry, morph factor, and marker count.
 
@@ -186,6 +238,100 @@ const glyphLayer = await createLeafletGlyphLayer({
 ```
 
 The callback receives the same context object (minus the final `data` field) and should return whatever payload your renderer expects. `filterFeature(context)` lets you drop glyphs entirely (return `false`) for a given feature.
+
+#### Alternative chart types and rendering approaches
+
+The glyph system accepts any HTML/SVG content. Here are examples with different visualization types:
+
+**Bar chart:**
+```js
+drawGlyph: ({ data, feature }) => {
+  const values = [data.value1, data.value2, data.value3];
+  const bars = values.map((v, i) => 
+    `<rect x="${i*20}" y="${60-v}" width="15" height="${v}" fill="steelblue"/>`
+  ).join('');
+  
+  return {
+    html: `<svg width="60" height="60">${bars}</svg>`,
+    iconSize: [60, 60],
+    iconAnchor: [30, 30],
+  };
+}
+```
+
+**Using D3.js:**
+```js
+import * as d3 from "d3";
+
+drawGlyph: ({ data }) => {
+  const div = document.createElement('div');
+  div.style.width = '80px';
+  div.style.height = '80px';
+  
+  const svg = d3.select(div).append('svg')
+    .attr('width', 80)
+    .attr('height', 80);
+  
+  // Use D3 to create any visualization
+  svg.selectAll('circle')
+    .data(data.values)
+    .enter().append('circle')
+    .attr('cx', (d, i) => i * 20 + 10)
+    .attr('cy', 40)
+    .attr('r', d => d.radius)
+    .attr('fill', d => d.color);
+  
+  return div; // Return DOM element directly
+}
+```
+
+**Custom icons or images:**
+```js
+drawGlyph: ({ data }) => {
+  return {
+    html: `<img src="/icons/${data.category}.png" width="32" height="32"/>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  };
+}
+```
+
+**Pre-built Leaflet icons:**
+```js
+drawGlyph: ({ data }) => {
+  const icon = L.icon({
+    iconUrl: `/markers/${data.type}.png`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
+  
+  return { icon }; // Full control over Leaflet icon
+}
+```
+
+**Sparkline with HTML Canvas:**
+```js
+drawGlyph: ({ data }) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 80;
+  canvas.height = 40;
+  const ctx = canvas.getContext('2d');
+  
+  // Draw sparkline
+  ctx.strokeStyle = '#4e79a7';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  data.timeSeries.forEach((value, i) => {
+    const x = (i / (data.timeSeries.length - 1)) * 80;
+    const y = 40 - (value * 40);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  
+  return canvas.toDataURL(); // Return as data URL
+}
+```
 
 ### Legacy wrapper
 

@@ -38,6 +38,7 @@ export class GeoMorpher {
     geoJSONJoinColumn = "code",
     aggregations = {},
     normalize = true,
+    projection = null,
   }) {
     this.regularGeoJSON = regularGeoJSON;
     this.cartogramGeoJSON = cartogramGeoJSON;
@@ -47,6 +48,7 @@ export class GeoMorpher {
     this.geoJSONJoinColumn = geoJSONJoinColumn;
     this.aggregations = aggregations;
     this.normalize = normalize;
+    this.projection = projection;
 
     this.state = {
       prepared: false,
@@ -82,8 +84,8 @@ export class GeoMorpher {
       normalize: this.normalize,
     });
 
-    const regularWGS84 = toWGS84FeatureCollection(regularEnriched);
-    const cartogramWGS84 = toWGS84FeatureCollection(cartogramEnriched);
+    const regularWGS84 = toWGS84FeatureCollection(regularEnriched, this.projection);
+    const cartogramWGS84 = toWGS84FeatureCollection(cartogramEnriched, this.projection);
 
     const geographyLookup = createLookup(regularWGS84.features, (feature) =>
       feature?.properties?.[this.geoJSONJoinColumn]

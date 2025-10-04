@@ -1,7 +1,16 @@
 import { GeoMorpher } from "./core/geomorpher.js";
 import { createLeafletMorphLayers, createLeafletGlyphLayer } from "./adapters/leaflet/index.js";
+import { WGS84Projection, WebMercatorProjection, isLikelyWGS84, createProj4Projection } from "./utils/projections.js";
 
-export { GeoMorpher, createLeafletMorphLayers, createLeafletGlyphLayer };
+export { 
+  GeoMorpher, 
+  createLeafletMorphLayers, 
+  createLeafletGlyphLayer,
+  WGS84Projection,
+  WebMercatorProjection,
+  isLikelyWGS84,
+  createProj4Projection
+};
 
 export async function geoMorpher(options) {
 	const morpher = new GeoMorpher(options);
