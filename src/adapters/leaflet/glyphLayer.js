@@ -8,6 +8,38 @@ import { normalizeGlyphResult } from "./utils/glyphNormalizer.js";
 import { DEFAULT_GEOMETRY, resolveCollection } from "./utils/collections.js";
 
 /**
+ * Calculate the pixel dimensions of a feature's bounds at the current map zoom
+ *
+ * @param {Object} feature - GeoJSON feature
+ * @param {Object} map - Leaflet map instance
+ * @param {Object} L - Leaflet namespace
+ * @returns {Object|null} - Bounds with width, height, center in pixels
+ */
+function getFeatureBoundsInPixels(feature, map, L) {
+  if (!feature || !map || !L) return null;
+
+  try {
+    const geoJsonLayer = L.geoJSON(feature);
+    const bounds = geoJsonLayer.getBounds();
+
+    if (!bounds.isValid()) return null;
+
+    const ne = map.latLngToContainerPoint(bounds.getNorthEast());
+    const sw = map.latLngToContainerPoint(bounds.getSouthWest());
+
+    return {
+      width: Math.abs(ne.x - sw.x),
+      height: Math.abs(ne.y - sw.y),
+      center: map.latLngToContainerPoint(bounds.getCenter()),
+      bounds: bounds,
+    };
+  } catch (error) {
+    console.warn("Failed to calculate feature bounds:", error);
+    return null;
+  }
+}
+
+/**
  * Create a Leaflet layer for rendering custom glyphs (markers) that follow
  * the morphing geometry.
  *
@@ -23,6 +55,7 @@ import { DEFAULT_GEOMETRY, resolveCollection } from "./utils/collections.js";
  * @param {Function} [params.filterFeature] - Function to filter features
  * @param {Object} [params.markerOptions={}] - Default Leaflet marker options
  * @param {string} [params.pane] - Leaflet pane name for markers
+ * @param {boolean} [params.scaleWithZoom=false] - If true, glyphs resize based on feature bounds at each zoom level
  * @returns {Promise<Object>} - Glyph layer controller
  */
 export async function createLeafletGlyphLayer({
@@ -37,6 +70,7 @@ export async function createLeafletGlyphLayer({
   filterFeature,
   markerOptions = {},
   pane,
+  scaleWithZoom = false,
 }) {
   if (!morpher || !L) {
     throw new Error("Both morpher and Leaflet namespace (L) are required");
@@ -76,6 +110,15 @@ export async function createLeafletGlyphLayer({
     typeof filterFeature === "function"
       ? (context) => Boolean(filterFeature(context))
       : () => true;
+
+  let zoomEndListener = null;
+
+  if (map && scaleWithZoom) {
+    zoomEndListener = () => {
+      updateGlyphs({});
+    };
+    map.on("zoomend", zoomEndListener);
+  }
 
   const upsertMarker = ({ feature, glyph, featureId }) => {
     const latLng = toLatLng(feature);
@@ -160,6 +203,10 @@ export async function createLeafletGlyphLayer({
         morphValue: currentMorphFactor,
       });
 
+      const featureBounds = scaleWithZoom && map
+        ? getFeatureBoundsInPixels(feature, map, L)
+        : null;
+
       const context = {
         feature,
         featureId,
@@ -167,6 +214,8 @@ export async function createLeafletGlyphLayer({
         morphFactor: currentMorphFactor,
         data,
         morpher,
+        zoom: map ? map.getZoom() : null,
+        featureBounds,
       };
 
       if (!shouldRenderFeature(context)) {
@@ -211,7 +260,15 @@ export async function createLeafletGlyphLayer({
     geometry: currentGeometry,
     morphFactor: currentMorphFactor,
     markerCount: markers.size,
+    scaleWithZoom,
   });
+
+  const destroy = () => {
+    clear();
+    if (map && zoomEndListener) {
+      map.off("zoomend", zoomEndListener);
+    }
+  };
 
   updateGlyphs({});
 
@@ -220,5 +277,6 @@ export async function createLeafletGlyphLayer({
     updateGlyphs,
     clear,
     getState,
+    destroy,
   };
 }

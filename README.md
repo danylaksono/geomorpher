@@ -333,6 +333,57 @@ drawGlyph: ({ data }) => {
 }
 ```
 
+#### Zoom-scaling glyphs
+
+By default, glyphs maintain a fixed pixel size regardless of map zoom level (standard Leaflet marker behavior). However, you can enable `scaleWithZoom` to make glyphs resize proportionally with the underlying map features—ideal for waffle charts, heatmap cells, or other visualizations that should fill polygon bounds.
+
+```js
+const glyphLayer = await createLeafletGlyphLayer({
+  morpher,
+  L,
+  map,
+  scaleWithZoom: true, // Enable zoom-responsive sizing
+  drawGlyph: ({ data, feature, featureBounds, zoom }) => {
+    if (!featureBounds) return null;
+    
+    const { width, height } = featureBounds; // Pixel dimensions at current zoom
+    
+    // Create waffle chart that fills the cartogram polygon
+    const gridSize = 10;
+    const cellSize = Math.min(width, height) / gridSize;
+    const fillRatio = data.value / data.max;
+    const filledCells = Math.floor(gridSize * gridSize * fillRatio);
+    
+    const cells = [];
+    for (let i = 0; i < gridSize; i++) {
+      for (let j = 0; j < gridSize; j++) {
+        const index = i * gridSize + j;
+        const filled = index < filledCells;
+        cells.push(
+          `<rect x="${j * cellSize}" y="${i * cellSize}" 
+                 width="${cellSize}" height="${cellSize}" 
+                 fill="${filled ? '#4e79a7' : '#e0e0e0'}"/>`
+        );
+      }
+    }
+    
+    return {
+      html: `<svg width="${width}" height="${height}">${cells.join('')}</svg>`,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height / 2],
+    };
+  },
+});
+```
+
+When `scaleWithZoom` is enabled:
+- `featureBounds` provides `{ width, height, center, bounds }` in pixels at the current zoom level
+- `zoom` provides the current map zoom level
+- Glyphs automatically update when users zoom in/out
+- Call `glyphLayer.destroy()` to clean up zoom listeners when removing the layer
+
+A complete example is available at `examples/browser/zoom-scaling-glyphs.html`.
+
 ### Legacy wrapper
 
 If you previously relied on the `geoMorpher` factory from the Observable notebook, it is still available:
@@ -370,6 +421,9 @@ npm run examples:browser
 ```
 
 Then open <http://localhost:4173/examples/browser/>. A slider lets you tween between the regular and cartogram geometries in real time while a Leaflet layer control toggles each geography on and off, keeping the matching feature counts on display. (An internet connection is required to fetch the CDN-hosted modules and map tiles.)
+
+**Additional examples:**
+- `examples/browser/zoom-scaling-glyphs.html` - Demonstrates zoom-responsive waffle charts that resize to fill cartogram polygons as you zoom in/out
 
 ## Testing
 
