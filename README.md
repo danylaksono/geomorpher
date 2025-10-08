@@ -1,6 +1,6 @@
 # geo-morpher
 
-Imperative GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with first-class Leaflet helpers.
+Imperative GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with first-class Leaflet helpers and an in-progress MapLibre adapter.
 
 ![](demo.gif)
 
@@ -11,7 +11,7 @@ Imperative GeoJSON morphing utilities for animating between regular geography an
 npm install geo-morpher
 ```
 
-Bring your own Leaflet instance (listed as a peer dependency).
+Bring your own Leaflet or MapLibre instance (both listed as peer dependencies).
 
 ## Usage
 
@@ -27,6 +27,13 @@ data/              # Sample Oxford LSOA datasets
 examples/          # Runnable native JS scripts
 test/              # node:test coverage for core behaviours
 ```
+
+### MapLibre adapter status
+
+- `src/adapters/maplibre/` now ships with stubbed entry points that will be fleshed out across the migration plan recorded in `docs/maplibre-migration-plan.md`.
+- Importing `geo-morpher/maplibre` currently raises a descriptive error to signal that the implementation is underway; this allows downstream codebases to start wiring feature flags without silently breaking at runtime.
+- Follow the plan doc for progress updates and timelines before relying on the MapLibre adapter in production.
+
 
 ### 1. Prepare morphing data
 

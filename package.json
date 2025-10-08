@@ -9,7 +9,11 @@
         "./leaflet": "./src/adapters/leaflet/index.js",
         "./leaflet/morph": "./src/adapters/leaflet/morphLayers.js",
         "./leaflet/glyph": "./src/adapters/leaflet/glyphLayer.js",
+        "./maplibre": "./src/adapters/maplibre/index.js",
+        "./maplibre/morph": "./src/adapters/maplibre/morphLayers.js",
+        "./maplibre/glyph": "./src/adapters/maplibre/glyphLayer.js",
         "./adapters/leaflet": "./src/adapters/leaflet.js",
+        "./adapters/maplibre": "./src/adapters/maplibre.js",
         "./core/geomorpher": "./src/core/geomorpher.js"
     },
     "files": [
@@ -40,9 +44,11 @@
     "dependencies": {
         "@turf/turf": "^6.5.0",
         "flubber": "^0.4.2",
-        "lodash": "^4.17.21"
+        "lodash": "^4.17.21",
+        "maplibre-gl": "^5.8.0"
     },
     "peerDependencies": {
-        "leaflet": ">=1.7.0"
+        "leaflet": ">=1.7.0",
+        "maplibre-gl": ">=5.8.0"
     }
 }
