@@ -30,9 +30,11 @@ test/              # node:test coverage for core behaviours
 
 ### MapLibre adapter status
 
-- `src/adapters/maplibre/` now ships with stubbed entry points that will be fleshed out across the migration plan recorded in `docs/maplibre-migration-plan.md`.
-- Importing `geo-morpher/maplibre` currently raises a descriptive error to signal that the implementation is underway; this allows downstream codebases to start wiring feature flags without silently breaking at runtime.
-- Follow the plan doc for progress updates and timelines before relying on the MapLibre adapter in production.
+- `createMapLibreMorphLayers` provisions GeoJSON sources and fill layers for regular, cartogram, and interpolated geometries, exposing an `updateMorphFactor` helper to drive tweening from UI controls.
+- `createMapLibreGlyphLayer` renders glyphs with `maplibregl.Marker` instances; enable `scaleWithZoom` to regenerate glyph markup as users zoom.
+- Pass your MapLibre namespace explicitly (`maplibreNamespace: maplibregl`) when calling glyph helpers in module-bundled builds where `maplibregl` is not attached to `globalThis`.
+- For heavy glyph scenes, consider upgrading to a [CustomLayerInterface](https://www.maplibre.org/maplibre-gl-js/docs/API/interfaces/CustomLayerInterface/) implementation that batches drawing on the GPU. The marker pipeline keeps the API simple while offering a documented migration path.
+- Track ongoing enhancements and open items in `docs/maplibre-migration-plan.md` before relying on the adapter in production.
 
 
 ### 1. Prepare morphing data

@@ -7,6 +7,9 @@ _Last reviewed: 2025-10-09_
 - Deliver the migration in three controlled phases: foundation (build and runtime setup), feature parity (core morphing, glyphs), and enhancement (MapLibre-native capabilities such as globe projection and shader-based effects).
 - Maintain example parity during the transition by running Leaflet and MapLibre demos side by side until validation completes.
 
+## Status Updates
+- **2025-10-09:** Foundation tasks landed in Git (MapLibre dependency wiring, baseline morph layer implementation, and marker-based glyph adapter with documented CustomLayerInterface upgrade path).
+
 ## Current State Assessment
 - `src/adapters/leaflet/*` exposes Leaflet helpers for layer creation, glyph rendering, and basemap styling.
 - Morph logic (`src/core/geomorpher.js`, `src/utils/**`) is UI-agnostic; the adapter translates collections into Leaflet `L.geoJSON` layers and applies DOM-based effects for blur, opacity, and grayscale.
