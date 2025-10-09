@@ -22,6 +22,7 @@ import {
   geoMorpher,
   createLeafletMorphLayers,
   createLeafletGlyphLayer,
+  createGridCartogramFeatureCollection,
 } from "../src/index.js";
 
 const sampleData = [
@@ -296,4 +297,103 @@ test("Glyph layer renders markers and updates with morph factor", async () => {
 
   glyphLayer.clear();
   assert.equal(layer.layers.size, 0);
+});
+
+test("GeoMorpher supports grid-based cartogram input", async () => {
+  const regular = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { ID: "REG-1" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [0, 0],
+              [2, 0],
+              [2, 2],
+              [0, 2],
+              [0, 0],
+            ],
+          ],
+        },
+      },
+      {
+        type: "Feature",
+        properties: { ID: "REG-2" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [2, 0],
+              [4, 0],
+              [4, 2],
+              [2, 2],
+              [2, 0],
+            ],
+          ],
+        },
+      },
+    ],
+  };
+
+  const gridRecords = [
+    { ID: "REG-1", row: 1, col: 1 },
+    { ID: "REG-2", row: 1, col: 2 },
+  ];
+
+  const generated = createGridCartogramFeatureCollection({
+    records: gridRecords,
+    regularGeoJSON: regular,
+    joinProperty: "ID",
+    gridOptions: {
+      idField: "ID",
+      rowField: "row",
+      colField: "col",
+      cellPadding: 0,
+    },
+  });
+
+  assert.equal(generated.features.length, 2);
+  assert.equal(generated.features[0].properties.ID, "REG-1");
+
+  const fromArray = new GeoMorpher({
+    regularGeoJSON: regular,
+    cartogramGeoJSON: gridRecords,
+    joinColumn: "ID",
+    geoJSONJoinColumn: "ID",
+    cartogramGridOptions: {
+      idField: "ID",
+      rowField: "row",
+      colField: "col",
+      cellPadding: 0,
+    },
+  });
+
+  await fromArray.prepare();
+  const cartogramArray = fromArray.getCartogramFeatureCollection();
+  assert.equal(cartogramArray.features.length, 2);
+  assert.equal(cartogramArray.features[0].properties.ID, "REG-1");
+  assert.equal(cartogramArray.features[1].geometry.type, "Polygon");
+
+  const csvInput = "ID,row,col\nREG-1,1,1\nREG-2,1,2";
+  const fromCsv = new GeoMorpher({
+    regularGeoJSON: regular,
+    cartogramGeoJSON: csvInput,
+    joinColumn: "ID",
+    geoJSONJoinColumn: "ID",
+    cartogramGridOptions: {
+      idField: "ID",
+      rowField: "row",
+      colField: "col",
+      cellPadding: 0,
+    },
+  });
+
+  await fromCsv.prepare();
+  const cartogramCsv = fromCsv.getCartogramFeatureCollection();
+  assert.equal(cartogramCsv.features.length, 2);
+  assert.equal(cartogramCsv.features[0].geometry.type, "Polygon");
+  assert.ok(cartogramCsv.features[0].geometry.coordinates[0].length >= 4);
 });

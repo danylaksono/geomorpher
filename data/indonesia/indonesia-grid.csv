@@ -1,0 +1,39 @@
+ID,Provinsi,Initials,row,col
+11,Aceh,ACE,1,1
+51,Bali,BAL,7,7
+36,Banten,BAN,6,3
+17,Bengkulu,BEN,4,1
+34,Daerah Istimewa Yogyakarta,DIY,7,5
+31,Daerah Khusus Ibukota Jakarta,JKT,6,4
+75,Gorontalo,GOR,2,8
+15,Jambi,JAM,3,2
+32,Jawa Barat,JBR,7,4
+33,Jawa Tengah,JTG,6,5
+35,Jawa Timur,JTM,6,6
+61,Kalimantan Barat,KBA,3,4
+63,Kalimantan Selatan,KSL,4,5
+62,Kalimantan Tengah,KTG,4,4
+64,Kalimantan Timur,KTI,3,5
+65,Kalimantan Utara,KUT,2,5
+19,Kepulauan Bangka Belitung,BKB,4,2
+21,Kepulauan Riau,KEP,2,3
+18,Lampung,LAM,5,2
+81,Maluku,MAL,5,10
+82,Maluku Utara,MUT,4,10
+52,Nusa Tenggara Barat,NTB,7,8
+53,Nusa Tenggara Timur,NTT,7,9
+91-A,Papua,PAP,4,13
+92-A,Papua Barat,PAB,4,12
+92-B,Papua Barat Daya,PBD,3,12
+91-B,Papua Pegunungan,PPG,5,13
+91-C,Papua Selatan,PSL,6,13
+91-D,Papua Tengah,PTG,5,12
+14,Riau,RIA,2,2
+76,Sulawesi Barat,SBR,4,7
+73,Sulawesi Selatan,SSL,5,7
+72,Sulawesi Tengah,STN,3,8
+74,Sulawesi Tenggara,STG,4,8
+71,Sulawesi Utara,SUT,2,9
+13,Sumatera Barat,SBP,3,1
+16,Sumatera Selatan,SSE,5,1
+12,Sumatera Utara,SUM,2,1

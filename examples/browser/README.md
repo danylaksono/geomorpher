@@ -18,7 +18,14 @@ Highlights the new MapLibre adapter with:
 - Paint-property driven basemap fading
 - Layer visibility toggles implemented in the control panel
 
-### 3. `zoom-scaling-glyphs.html` - Zoom-Scaling Demo
+### 3. `indonesia/index.html` - Indonesia Literacy Cartogram
+Uses the grid-cartogram workflow with:
+- CSV-driven square cartogram construction
+- Provincial literacy glyphs derived from multiple indicators
+- MapLibre morphing between geographies and the grid layout
+- Configurable basemap fading and layer toggles
+
+### 4. `zoom-scaling-glyphs.html` - Zoom-Scaling Demo
 Demonstrates the zoom-scaling feature with:
 - Waffle charts that resize with map zoom
 - Toggle between fixed and scaling modes
@@ -33,6 +40,7 @@ npm run examples:browser
 Then open:
 - Leaflet demo: http://localhost:4173/examples/browser/index.html
 - MapLibre demo: http://localhost:4173/examples/browser/maplibre/index.html
+- Indonesia Grid Cartogram: http://localhost:4173/examples/browser/indonesia/index.html
 - Zoom-scaling: http://localhost:4173/examples/browser/zoom-scaling-glyphs.html
 
 ## Important: Import Maps
@@ -51,6 +59,7 @@ For future browser examples, use this complete template:
   "npm:leaflet": "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/+esm",
   "maplibre-gl": "https://esm.sh/maplibre-gl@5.8.0?bundle",
     "@turf/turf": "https://esm.sh/@turf/turf@6.5.0?bundle",
+    "@turf/helpers": "https://esm.sh/@turf/helpers@6.5.0?bundle",
     "flubber": "https://esm.sh/flubber@0.4.2?bundle",
     "lodash/isEmpty.js": "https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/isEmpty.js",
     "lodash/cloneDeep.js": "https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/cloneDeep.js",
