@@ -1,7 +1,27 @@
 import { GeoMorpher } from "./core/geomorpher.js";
-import { createLeafletMorphLayers, createLeafletGlyphLayer } from "./adapters/leaflet.js";
+import { createLeafletMorphLayers, createLeafletGlyphLayer } from "./adapters/leaflet/index.js";
+import { createMapLibreMorphLayers, createMapLibreGlyphLayer } from "./adapters/maplibre/index.js";
+import { WGS84Projection, WebMercatorProjection, isLikelyWGS84, createProj4Projection } from "./utils/projections.js";
+import { parseCSV } from "./utils/csv.js";
+import {
+	createGridCartogramFeatureCollection,
+	normalizeCartogramInput,
+} from "./utils/cartogram.js";
 
-export { GeoMorpher, createLeafletMorphLayers, createLeafletGlyphLayer };
+export { 
+  GeoMorpher, 
+  createLeafletMorphLayers, 
+  createLeafletGlyphLayer,
+	createMapLibreMorphLayers,
+	createMapLibreGlyphLayer,
+  WGS84Projection,
+  WebMercatorProjection,
+  isLikelyWGS84,
+	createProj4Projection,
+	parseCSV,
+	createGridCartogramFeatureCollection,
+	normalizeCartogramInput,
+};
 
 export async function geoMorpher(options) {
 	const morpher = new GeoMorpher(options);

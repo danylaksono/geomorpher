@@ -1,6 +1,6 @@
 # geo-morpher
 
-Imperative GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with first-class Leaflet helpers.
+Imperative GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with first-class Leaflet helpers and an in-progress MapLibre adapter.
 
 ![](demo.gif)
 
@@ -11,7 +11,7 @@ Imperative GeoJSON morphing utilities for animating between regular geography an
 npm install geo-morpher
 ```
 
-Bring your own Leaflet instance (listed as a peer dependency).
+Bring your own Leaflet or MapLibre instance (both listed as peer dependencies).
 
 ## Usage
 
@@ -27,6 +27,49 @@ data/              # Sample Oxford LSOA datasets
 examples/          # Runnable native JS scripts
 test/              # node:test coverage for core behaviours
 ```
+
+### MapLibre adapter status
+
+- `createMapLibreMorphLayers` provisions GeoJSON sources and fill layers for regular, cartogram, and interpolated geometries, exposing an `updateMorphFactor` helper to drive tweening from UI controls.
+- `createMapLibreGlyphLayer` renders glyphs with `maplibregl.Marker` instances; enable `scaleWithZoom` to regenerate glyph markup as users zoom.
+- Pass your MapLibre namespace explicitly (`maplibreNamespace: maplibregl`) when calling glyph helpers in module-bundled builds where `maplibregl` is not attached to `globalThis`.
+- For heavy glyph scenes, consider upgrading to a [CustomLayerInterface](https://www.maplibre.org/maplibre-gl-js/docs/API/interfaces/CustomLayerInterface/) implementation that batches drawing on the GPU. The marker pipeline keeps the API simple while offering a documented migration path.
+- Track ongoing enhancements and open items in `docs/maplibre-migration-plan.md` before relying on the adapter in production.
+
+#### MapLibre basemap effects
+
+`createMapLibreMorphLayers` accepts a `basemapEffect` configuration that interpolates paint properties on existing style layers as the morph factor changes. This mirrors the Leaflet DOM-based blur/fade behaviour while staying inside the MapLibre style system.
+
+```js
+const morph = await createMapLibreMorphLayers({
+  morpher,
+  map,
+  basemapEffect: {
+    layers: ["basemap", "basemap-labels"],
+    properties: {
+      "raster-opacity": [1, 0.15],
+      "raster-brightness-max": { from: 1, to: 1.4 },
+    },
+    propertyClamp: {
+      "raster-brightness-max": [0, 2],
+    },
+    easing: (t) => t * t, // optional easing curve
+  },
+});
+
+// Update morph factor, basemap effect adjusts automatically
+morph.updateMorphFactor(0.75);
+
+// Apply effect manually (e.g., when animating via requestAnimationFrame)
+morph.applyBasemapEffect(0.5);
+```
+
+- Provide a `layers` string/array or resolver function to target paint properties across multiple layers.
+- Supply ranges (`[from, to]` or `{ from, to }`) for numeric properties such as `raster-opacity`, `fill-opacity`, or `line-opacity`.
+- Use functions in `properties[layerId]` for full control or to manipulate non-numeric paint values.
+- Capture-and-reset logic ensures properties revert to their original values when the effect is disabled.
+- Canvas-style blur is not built-in; use a custom MapLibre layer if a true blur shader is required.
+
 
 ### 1. Prepare morphing data
 
@@ -51,6 +94,43 @@ const regular = morpher.getRegularFeatureCollection();
 const cartogram = morpher.getCartogramFeatureCollection();
 const tween = morpher.getInterpolatedFeatureCollection(0.5);
 ```
+
+#### Using custom projections
+
+By default, `GeoMorpher` assumes input data is in **OSGB** (British National Grid) and converts to WGS84 for Leaflet. If your data is in a different coordinate system, pass a custom projection:
+
+```js
+import { GeoMorpher, WGS84Projection, isLikelyWGS84 } from "geo-morpher";
+
+// Auto-detect coordinate system
+const detectedProjection = isLikelyWGS84(regularGeoJSON);
+console.log("Detected:", detectedProjection); // 'WGS84', 'OSGB', or 'UNKNOWN'
+
+// For data already in WGS84 (lat/lng)
+const morpher = new GeoMorpher({
+  regularGeoJSON,
+  cartogramGeoJSON,
+  projection: WGS84Projection, // No transformation needed
+});
+
+// For Web Mercator data
+import { WebMercatorProjection } from "geo-morpher";
+const morpher = new GeoMorpher({
+  regularGeoJSON,
+  cartogramGeoJSON,
+  projection: WebMercatorProjection,
+});
+
+// Custom projection (e.g., using proj4)
+const customProjection = {
+  toGeo: ([x, y]) => {
+    // Transform [x, y] to [lng, lat]
+    return [lng, lat];
+  }
+};
+```
+
+See `examples/custom-projection.js` for detailed examples.
 
 ### 2. Drop the morph straight into Leaflet
 
@@ -99,7 +179,9 @@ Provide either `basemapLayer` (any Leaflet layer with a container) or `basemapEf
 
 ### 3. Overlay multivariate glyphs
 
-Bring your own SVG/HTML drawing function to turn each feature into a custom glyph (pie charts, sparklines, radar plots—anything you can render inside a `div` icon). The helper keeps markers in sync with the current geography so they glide with the morph.
+The glyph system is **completely customizable** with no hardcoded chart types. You provide a rendering function that can return any visualization you can create with HTML, SVG, Canvas, or third-party libraries like D3.js or Chart.js. The helper automatically keeps markers positioned and synchronized with the morphing geometry.
+
+**Example with pie charts:**
 
 ```js
 import {
@@ -154,9 +236,22 @@ slider.addEventListener("input", (event) => {
 `drawGlyph` receives `{ feature, featureId, data, morpher, geometry, morphFactor }` and can return:
 
 - `null`/`undefined` to skip the feature
-- A plain HTML string or DOM node
+- A plain HTML string or DOM element
 - An object with `html`, `iconSize`, `iconAnchor`, `className`, `pane`, and optional `markerOptions`
 - Or an object containing a pre-built `icon` (any Leaflet `Icon`), if you need full control
+
+**Configuration object properties:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `html` | string \| HTMLElement | - | Your custom HTML/SVG string or DOM element |
+| `className` | string | `"geomorpher-glyph"` | CSS class for the marker |
+| `iconSize` | [number, number] | `[48, 48]` | Width and height in pixels |
+| `iconAnchor` | [number, number] | `[24, 24]` | Anchor point in pixels (center by default) |
+| `pane` | string | - | Leaflet pane name for z-index control |
+| `markerOptions` | object | `{}` | Additional Leaflet marker options |
+| `divIconOptions` | object | `{}` | Additional Leaflet divIcon options |
+| `icon` | L.Icon | - | Pre-built Leaflet icon (overrides all other options) |
 
 Optionally provide `getGlyphData` or `filterFeature` callbacks to customise how data/visibility is resolved. When you call `glyphLayer.clear()` all markers are removed; `glyphLayer.getState()` exposes the current geometry, morph factor, and marker count.
 
@@ -187,6 +282,151 @@ const glyphLayer = await createLeafletGlyphLayer({
 
 The callback receives the same context object (minus the final `data` field) and should return whatever payload your renderer expects. `filterFeature(context)` lets you drop glyphs entirely (return `false`) for a given feature.
 
+#### Alternative chart types and rendering approaches
+
+The glyph system accepts any HTML/SVG content. Here are examples with different visualization types:
+
+**Bar chart:**
+```js
+drawGlyph: ({ data, feature }) => {
+  const values = [data.value1, data.value2, data.value3];
+  const bars = values.map((v, i) => 
+    `<rect x="${i*20}" y="${60-v}" width="15" height="${v}" fill="steelblue"/>`
+  ).join('');
+  
+  return {
+    html: `<svg width="60" height="60">${bars}</svg>`,
+    iconSize: [60, 60],
+    iconAnchor: [30, 30],
+  };
+}
+```
+
+**Using D3.js:**
+```js
+import * as d3 from "d3";
+
+drawGlyph: ({ data }) => {
+  const div = document.createElement('div');
+  div.style.width = '80px';
+  div.style.height = '80px';
+  
+  const svg = d3.select(div).append('svg')
+    .attr('width', 80)
+    .attr('height', 80);
+  
+  // Use D3 to create any visualization
+  svg.selectAll('circle')
+    .data(data.values)
+    .enter().append('circle')
+    .attr('cx', (d, i) => i * 20 + 10)
+    .attr('cy', 40)
+    .attr('r', d => d.radius)
+    .attr('fill', d => d.color);
+  
+  return div; // Return DOM element directly
+}
+```
+
+**Custom icons or images:**
+```js
+drawGlyph: ({ data }) => {
+  return {
+    html: `<img src="/icons/${data.category}.png" width="32" height="32"/>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  };
+}
+```
+
+**Pre-built Leaflet icons:**
+```js
+drawGlyph: ({ data }) => {
+  const icon = L.icon({
+    iconUrl: `/markers/${data.type}.png`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
+  
+  return { icon }; // Full control over Leaflet icon
+}
+```
+
+**Sparkline with HTML Canvas:**
+```js
+drawGlyph: ({ data }) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 80;
+  canvas.height = 40;
+  const ctx = canvas.getContext('2d');
+  
+  // Draw sparkline
+  ctx.strokeStyle = '#4e79a7';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  data.timeSeries.forEach((value, i) => {
+    const x = (i / (data.timeSeries.length - 1)) * 80;
+    const y = 40 - (value * 40);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  
+  return canvas.toDataURL(); // Return as data URL
+}
+```
+
+#### Zoom-scaling glyphs
+
+By default, glyphs maintain a fixed pixel size regardless of map zoom level (standard Leaflet marker behavior). However, you can enable `scaleWithZoom` to make glyphs resize proportionally with the underlying map features—ideal for waffle charts, heatmap cells, or other visualizations that should fill polygon bounds.
+
+```js
+const glyphLayer = await createLeafletGlyphLayer({
+  morpher,
+  L,
+  map,
+  scaleWithZoom: true, // Enable zoom-responsive sizing
+  drawGlyph: ({ data, feature, featureBounds, zoom }) => {
+    if (!featureBounds) return null;
+    
+    const { width, height } = featureBounds; // Pixel dimensions at current zoom
+    
+    // Create waffle chart that fills the cartogram polygon
+    const gridSize = 10;
+    const cellSize = Math.min(width, height) / gridSize;
+    const fillRatio = data.value / data.max;
+    const filledCells = Math.floor(gridSize * gridSize * fillRatio);
+    
+    const cells = [];
+    for (let i = 0; i < gridSize; i++) {
+      for (let j = 0; j < gridSize; j++) {
+        const index = i * gridSize + j;
+        const filled = index < filledCells;
+        cells.push(
+          `<rect x="${j * cellSize}" y="${i * cellSize}" 
+                 width="${cellSize}" height="${cellSize}" 
+                 fill="${filled ? '#4e79a7' : '#e0e0e0'}"/>`
+        );
+      }
+    }
+    
+    return {
+      html: `<svg width="${width}" height="${height}">${cells.join('')}</svg>`,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height / 2],
+    };
+  },
+});
+```
+
+When `scaleWithZoom` is enabled:
+- `featureBounds` provides `{ width, height, center, bounds }` in pixels at the current zoom level
+- `zoom` provides the current map zoom level
+- Glyphs automatically update when users zoom in/out
+- Call `glyphLayer.destroy()` to clean up zoom listeners when removing the layer
+
+A complete example is available at `examples/browser/zoom-scaling-glyphs.html`.
+
 ### Legacy wrapper
 
 If you previously relied on the `geoMorpher` factory from the Observable notebook, it is still available:
@@ -215,15 +455,23 @@ node examples/native.js
 
 It loads `data/oxford_lsoas_regular.json` and `data/oxford_lsoas_cartogram.json`, mirrors their population/household properties into a basic dataset, and prints counts plus a sample tweened feature—all without any bundlers or UI frameworks.
 
-### Native browser example (Leaflet)
+### Native browser examples (Leaflet & MapLibre)
 
-Serve `examples/browser/index.html` to see the morph on top of Leaflet without a build step. Dependencies are resolved via import maps to CDN-hosted ES modules.
+Serve the browser demos to see geo-morpher running on top of either Leaflet or MapLibre without a build step. Dependencies are resolved via import maps to CDN-hosted ES modules.
 
 ```bash
 npm run examples:browser
 ```
 
-Then open <http://localhost:4173/examples/browser/>. A slider lets you tween between the regular and cartogram geometries in real time while a Leaflet layer control toggles each geography on and off, keeping the matching feature counts on display. (An internet connection is required to fetch the CDN-hosted modules and map tiles.)
+Then open:
+- Leaflet demo: <http://localhost:4173/examples/browser/index.html>
+- MapLibre demo: <http://localhost:4173/examples/browser/maplibre/index.html>
+
+Each demo provides a morph slider and glyph overlays; the MapLibre version showcases GPU-driven rendering, paint-property basemap fading, and DOM marker glyphs running through the new adapter. (An internet connection is required to fetch CDN-hosted modules and map tiles.)
+
+**Additional examples:**
+- `examples/browser/maplibre/index.html` - MapLibre adaptation with basemap paint-property effects and layer toggles
+- `examples/browser/zoom-scaling-glyphs.html` - Demonstrates zoom-responsive waffle charts that resize to fill cartogram polygons as you zoom in/out
 
 ## Testing
 
