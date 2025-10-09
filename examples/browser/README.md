@@ -4,14 +4,21 @@ This directory contains browser-based examples that demonstrate geo-morpher feat
 
 ## Examples
 
-### 1. `index.html` - Main Demo
+### 1. `index.html` - Leaflet Demo
 The primary demonstration showing:
 - Morphing between regular and cartogram geometries
 - Pie chart glyphs
 - Basemap effects
 - Layer controls
 
-### 2. `zoom-scaling-glyphs.html` - Zoom-Scaling Demo
+### 2. `maplibre/index.html` - MapLibre Demo
+Highlights the new MapLibre adapter with:
+- GPU-accelerated morph layers
+- Marker-based glyph overlays
+- Paint-property driven basemap fading
+- Layer visibility toggles implemented in the control panel
+
+### 3. `zoom-scaling-glyphs.html` - Zoom-Scaling Demo
 Demonstrates the zoom-scaling feature with:
 - Waffle charts that resize with map zoom
 - Toggle between fixed and scaling modes
@@ -24,7 +31,8 @@ npm run examples:browser
 ```
 
 Then open:
-- Main demo: http://localhost:4173/examples/browser/index.html
+- Leaflet demo: http://localhost:4173/examples/browser/index.html
+- MapLibre demo: http://localhost:4173/examples/browser/maplibre/index.html
 - Zoom-scaling: http://localhost:4173/examples/browser/zoom-scaling-glyphs.html
 
 ## Important: Import Maps
@@ -39,8 +47,9 @@ For future browser examples, use this complete template:
 <script type="importmap">
 {
   "imports": {
-    "leaflet": "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/+esm",
-    "npm:leaflet": "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/+esm",
+  "leaflet": "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/+esm",
+  "npm:leaflet": "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/+esm",
+  "maplibre-gl": "https://esm.sh/maplibre-gl@5.8.0?bundle",
     "@turf/turf": "https://esm.sh/@turf/turf@6.5.0?bundle",
     "flubber": "https://esm.sh/flubber@0.4.2?bundle",
     "lodash/isEmpty.js": "https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/isEmpty.js",
@@ -61,6 +70,7 @@ For future browser examples, use this complete template:
 
 **Core dependencies:**
 - **Leaflet 1.9.4** - Mapping library
+- **MapLibre GL JS 5.8.0** - WebGL renderer for the MapLibre demo (⚠️ requires esm.sh with ?bundle)
 - **@turf/turf 6.5.0** - Geospatial analysis (⚠️ requires esm.sh with ?bundle)
 - **flubber 0.4.2** - Shape interpolation for morphing (⚠️ requires esm.sh with ?bundle)
 - **lodash-es 4.17.21** - Utility functions (4 modules: isEmpty, cloneDeep, keyBy, mapValues)

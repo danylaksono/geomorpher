@@ -83,8 +83,18 @@ export async function createMapLibreGlyphLayer({
       ? (context) => Boolean(filterFeature(context))
       : () => true;
 
+  const createMarker = ({ element, lngLat, options }) => {
+    const marker = new maplibreNamespace.Marker({
+      element,
+      ...options,
+    })
+      .setLngLat(lngLat)
+      .addTo(map);
+
+    return marker;
+  };
+
   const upsertMarker = ({ featureId, glyph, lngLat }) => {
-    let entry = markers.get(featureId);
     const combinedOptions = {
       draggable: false,
       ...markerOptions,
@@ -93,37 +103,50 @@ export async function createMapLibreGlyphLayer({
 
     const { element: _ignored, ...markerOptionOverrides } = combinedOptions;
 
-    if (!entry) {
-      const marker = new maplibreNamespace.Marker({
-        element: glyph.element,
-        ...markerOptionOverrides,
-      })
-        .setLngLat(lngLat)
-        .addTo(map);
+    const applyMarkerOptions = (markerInstance) => {
+      if (Array.isArray(markerOptionOverrides.offset)) {
+        markerInstance.setOffset(markerOptionOverrides.offset);
+      }
+      if (typeof markerOptionOverrides.rotation === "number") {
+        markerInstance.setRotation(markerOptionOverrides.rotation);
+      }
+      if (typeof markerOptionOverrides.pitchAlignment === "string") {
+        markerInstance.setPitchAlignment(markerOptionOverrides.pitchAlignment);
+      }
+      if (typeof markerOptionOverrides.rotationAlignment === "string") {
+        markerInstance.setRotationAlignment(markerOptionOverrides.rotationAlignment);
+      }
+    };
 
+    const entry = markers.get(featureId);
+
+    if (!entry) {
+      const marker = createMarker({
+        element: glyph.element,
+        lngLat,
+        options: markerOptionOverrides,
+      });
+      applyMarkerOptions(marker);
       markers.set(featureId, { marker, element: glyph.element });
       return;
     }
 
     const { marker } = entry;
-    marker.setLngLat(lngLat);
+
     if (glyph.element && glyph.element !== entry.element) {
-      marker.setElement(glyph.element);
-      entry.element = glyph.element;
+      marker.remove();
+      const replacement = createMarker({
+        element: glyph.element,
+        lngLat,
+        options: markerOptionOverrides,
+      });
+      applyMarkerOptions(replacement);
+      markers.set(featureId, { marker: replacement, element: glyph.element });
+      return;
     }
 
-    if (Array.isArray(markerOptionOverrides.offset)) {
-      marker.setOffset(markerOptionOverrides.offset);
-    }
-    if (typeof markerOptionOverrides.rotation === "number") {
-      marker.setRotation(markerOptionOverrides.rotation);
-    }
-    if (typeof markerOptionOverrides.pitchAlignment === "string") {
-      marker.setPitchAlignment(markerOptionOverrides.pitchAlignment);
-    }
-    if (typeof markerOptionOverrides.rotationAlignment === "string") {
-      marker.setRotationAlignment(markerOptionOverrides.rotationAlignment);
-    }
+    marker.setLngLat(lngLat);
+    applyMarkerOptions(marker);
   };
 
   const removeMarker = (featureId) => {

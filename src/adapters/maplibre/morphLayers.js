@@ -8,6 +8,229 @@
 
 const DEFAULT_BASE_ID = "geomorpher";
 
+const clamp = (value, min, max) => {
+  if (!Number.isFinite(value)) return value;
+  if (Number.isFinite(min) && value < min) return min;
+  if (Number.isFinite(max) && value > max) return max;
+  return value;
+};
+
+const normalizeRangeSpec = (spec, original) => {
+  if (spec == null) return null;
+  if (Array.isArray(spec) && spec.length >= 2) {
+    return [spec[0], spec[1]];
+  }
+  if (typeof spec === "object") {
+    const { from, to } = spec;
+    if (typeof from !== "undefined" || typeof to !== "undefined") {
+      return [typeof from !== "undefined" ? from : original, typeof to !== "undefined" ? to : original];
+    }
+  }
+  if (typeof spec === "number" && Number.isFinite(spec)) {
+    return [original, spec];
+  }
+  return null;
+};
+
+const interpolateRange = ({ range, factor, original }) => {
+  if (!Array.isArray(range) || range.length < 2) return original;
+  const [start, end] = range;
+  const startValue = typeof start !== "undefined" ? start : original;
+  const endValue = typeof end !== "undefined" ? end : original;
+
+  if (!Number.isFinite(startValue) || !Number.isFinite(endValue)) {
+    return factor >= 1 ? endValue : startValue;
+  }
+
+  return startValue + (endValue - startValue) * factor;
+};
+
+const identity = (value) => value;
+
+const ensureArray = (value) => {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value;
+  return [value];
+};
+
+const warnOnce = (() => {
+  const seen = new Set();
+  return ({ scope, message }) => {
+    const key = `${scope}:${message}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    console.warn(`geo-morpher:createMapLibreMorphLayers ${message}`);
+  };
+})();
+
+const createBasemapEffectApplier = ({ map, effect }) => {
+  if (!effect) {
+    return {
+      apply: () => {},
+      reset: () => {},
+    };
+  }
+
+  const resolveLayers = () => {
+    const { layers } = effect;
+    if (typeof layers === "function") {
+      try {
+        return ensureArray(layers({ map }));
+      } catch (error) {
+        warnOnce({ scope: "basemap", message: `failed to resolve effect layers: ${error?.message ?? error}` });
+        return [];
+      }
+    }
+    return ensureArray(layers);
+  };
+
+  const baseProperties = effect.properties ?? {};
+  const perLayerProperties = effect.layerProperties ?? {};
+  const propertyClamp = effect.propertyClamp ?? {};
+  const propertyTransforms = effect.propertyTransforms ?? {};
+  const globalClamp = Array.isArray(effect.clamp) ? effect.clamp : null;
+  const easing = typeof effect.easing === "function" ? effect.easing : identity;
+  const isEnabled = effect.isEnabled;
+  const resetOnDisable = effect.resetOnDisable !== false;
+
+  const originals = new Map();
+
+  const captureOriginal = ({ layerId, property }) => {
+    const key = `${layerId}::${property}`;
+    if (originals.has(key)) {
+      return originals.get(key);
+    }
+
+    try {
+      const value = map.getPaintProperty(layerId, property);
+      originals.set(key, value);
+      return value;
+    } catch (error) {
+      warnOnce({ scope: "basemap", message: `cannot read paint property "${property}" on layer "${layerId}": ${error?.message ?? error}` });
+      originals.set(key, undefined);
+      return undefined;
+    }
+  };
+
+  const setPaintProperty = ({ layerId, property, value }) => {
+    if (!map.getLayer(layerId)) {
+      warnOnce({ scope: "basemap", message: `layer "${layerId}" not found when applying basemap effect` });
+      return;
+    }
+
+    try {
+      map.setPaintProperty(layerId, property, value);
+    } catch (error) {
+      warnOnce({ scope: "basemap", message: `failed to set paint property "${property}" on layer "${layerId}": ${error?.message ?? error}` });
+    }
+  };
+
+  const computePropertyValue = ({ layerId, property, spec, easedFactor }) => {
+    const original = captureOriginal({ layerId, property });
+
+    if (typeof spec === "function") {
+      try {
+        const next = spec({
+          layerId,
+          property,
+          factor: easedFactor,
+          original,
+          map,
+        });
+        return { value: next, original };
+      } catch (error) {
+        warnOnce({ scope: "basemap", message: `error computing paint property "${property}" for layer "${layerId}": ${error?.message ?? error}` });
+        return { value: original, original };
+      }
+    }
+
+    const range = normalizeRangeSpec(spec, original);
+    if (!range) {
+      return { value: original, original };
+    }
+
+    const value = interpolateRange({ range, factor: easedFactor, original });
+    return { value, original };
+  };
+
+  const applyClampAndTransform = ({ layerId, property, value, factor, original }) => {
+    const propertyRange = propertyClamp[property];
+    const clampRange = propertyRange ?? globalClamp;
+    let nextValue = value;
+
+    if (Array.isArray(clampRange) && clampRange.length >= 2 && Number.isFinite(nextValue)) {
+      nextValue = clamp(nextValue, clampRange[0], clampRange[1]);
+    }
+
+    const transform = propertyTransforms[property];
+    if (typeof transform === "function") {
+      try {
+        return transform({ value: nextValue, factor, original, layerId, map });
+      } catch (error) {
+        warnOnce({ scope: "basemap", message: `transform failed for property "${property}" on layer "${layerId}": ${error?.message ?? error}` });
+        return nextValue;
+      }
+    }
+
+    return nextValue;
+  };
+
+  const apply = (factor) => {
+    const layers = resolveLayers();
+    if (!layers.length) return;
+
+    const easingResult = easing(factor);
+    const easedFactor = clamp(easingResult, 0, 1);
+
+    const enabled = typeof isEnabled === "function" ? !!isEnabled({ factor, easedFactor, map }) : isEnabled !== false;
+
+    for (const layerId of layers) {
+      const mergedProperties = {
+        ...baseProperties,
+        ...(perLayerProperties?.[layerId] ?? {}),
+      };
+
+      for (const [property, spec] of Object.entries(mergedProperties)) {
+        const { value, original } = computePropertyValue({
+          layerId,
+          property,
+          spec,
+          easedFactor,
+        });
+
+        if (!enabled) {
+          if (resetOnDisable && typeof original !== "undefined") {
+            setPaintProperty({ layerId, property, value: original });
+          }
+          continue;
+        }
+
+        const nextValue = applyClampAndTransform({
+          layerId,
+          property,
+          value,
+          factor: easedFactor,
+          original,
+        });
+
+        if (typeof nextValue === "undefined") continue;
+
+        setPaintProperty({ layerId, property, value: nextValue });
+      }
+    }
+  };
+
+  const reset = () => {
+    originals.forEach((value, key) => {
+      if (typeof value === "undefined") return;
+      const [layerId, property] = key.split("::");
+      setPaintProperty({ layerId, property, value });
+    });
+  };
+
+  return { apply, reset };
+};
+
 const DEFAULT_STYLES = {
   regular: {
     type: "fill",
@@ -106,6 +329,7 @@ export async function createMapLibreMorphLayers({
   cartogramStyle = {},
   interpolatedStyle = {},
   beforeId,
+  basemapEffect,
 } = {}) {
   if (!morpher || !map) {
     throw new Error("Both morpher and MapLibre map are required");
@@ -159,6 +383,8 @@ export async function createMapLibreMorphLayers({
   addLayers({ map, layers, beforeId });
 
   let currentMorphFactor = morphFactor;
+  const basemapController = createBasemapEffectApplier({ map, effect: basemapEffect });
+  basemapController.apply(currentMorphFactor);
 
   const updateMorphFactor = (nextFactor) => {
     if (!Number.isFinite(nextFactor)) {
@@ -173,6 +399,7 @@ export async function createMapLibreMorphLayers({
 
     source.setData(collection);
     currentMorphFactor = nextFactor;
+    basemapController.apply(nextFactor);
     map.triggerRepaint?.();
     return collection;
   };
@@ -201,6 +428,7 @@ export async function createMapLibreMorphLayers({
   };
 
   const remove = () => {
+    basemapController.reset();
     for (const layerId of [layerIds.interpolated, layerIds.cartogram, layerIds.regular]) {
       if (map.getLayer(layerId)) {
         map.removeLayer(layerId);
@@ -225,6 +453,7 @@ export async function createMapLibreMorphLayers({
     layerIds,
     updateMorphFactor,
     setLayerVisibility,
+    applyBasemapEffect: basemapController.apply,
     remove,
     getState,
   };

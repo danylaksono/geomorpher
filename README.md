@@ -36,6 +36,40 @@ test/              # node:test coverage for core behaviours
 - For heavy glyph scenes, consider upgrading to a [CustomLayerInterface](https://www.maplibre.org/maplibre-gl-js/docs/API/interfaces/CustomLayerInterface/) implementation that batches drawing on the GPU. The marker pipeline keeps the API simple while offering a documented migration path.
 - Track ongoing enhancements and open items in `docs/maplibre-migration-plan.md` before relying on the adapter in production.
 
+#### MapLibre basemap effects
+
+`createMapLibreMorphLayers` accepts a `basemapEffect` configuration that interpolates paint properties on existing style layers as the morph factor changes. This mirrors the Leaflet DOM-based blur/fade behaviour while staying inside the MapLibre style system.
+
+```js
+const morph = await createMapLibreMorphLayers({
+  morpher,
+  map,
+  basemapEffect: {
+    layers: ["basemap", "basemap-labels"],
+    properties: {
+      "raster-opacity": [1, 0.15],
+      "raster-brightness-max": { from: 1, to: 1.4 },
+    },
+    propertyClamp: {
+      "raster-brightness-max": [0, 2],
+    },
+    easing: (t) => t * t, // optional easing curve
+  },
+});
+
+// Update morph factor, basemap effect adjusts automatically
+morph.updateMorphFactor(0.75);
+
+// Apply effect manually (e.g., when animating via requestAnimationFrame)
+morph.applyBasemapEffect(0.5);
+```
+
+- Provide a `layers` string/array or resolver function to target paint properties across multiple layers.
+- Supply ranges (`[from, to]` or `{ from, to }`) for numeric properties such as `raster-opacity`, `fill-opacity`, or `line-opacity`.
+- Use functions in `properties[layerId]` for full control or to manipulate non-numeric paint values.
+- Capture-and-reset logic ensures properties revert to their original values when the effect is disabled.
+- Canvas-style blur is not built-in; use a custom MapLibre layer if a true blur shader is required.
+
 
 ### 1. Prepare morphing data
 
@@ -421,17 +455,22 @@ node examples/native.js
 
 It loads `data/oxford_lsoas_regular.json` and `data/oxford_lsoas_cartogram.json`, mirrors their population/household properties into a basic dataset, and prints counts plus a sample tweened feature—all without any bundlers or UI frameworks.
 
-### Native browser example (Leaflet)
+### Native browser examples (Leaflet & MapLibre)
 
-Serve `examples/browser/index.html` to see the morph on top of Leaflet without a build step. Dependencies are resolved via import maps to CDN-hosted ES modules.
+Serve the browser demos to see geo-morpher running on top of either Leaflet or MapLibre without a build step. Dependencies are resolved via import maps to CDN-hosted ES modules.
 
 ```bash
 npm run examples:browser
 ```
 
-Then open <http://localhost:4173/examples/browser/>. A slider lets you tween between the regular and cartogram geometries in real time while a Leaflet layer control toggles each geography on and off, keeping the matching feature counts on display. (An internet connection is required to fetch the CDN-hosted modules and map tiles.)
+Then open:
+- Leaflet demo: <http://localhost:4173/examples/browser/index.html>
+- MapLibre demo: <http://localhost:4173/examples/browser/maplibre/index.html>
+
+Each demo provides a morph slider and glyph overlays; the MapLibre version showcases GPU-driven rendering, paint-property basemap fading, and DOM marker glyphs running through the new adapter. (An internet connection is required to fetch CDN-hosted modules and map tiles.)
 
 **Additional examples:**
+- `examples/browser/maplibre/index.html` - MapLibre adaptation with basemap paint-property effects and layer toggles
 - `examples/browser/zoom-scaling-glyphs.html` - Demonstrates zoom-responsive waffle charts that resize to fill cartogram polygons as you zoom in/out
 
 ## Testing

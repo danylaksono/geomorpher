@@ -9,6 +9,7 @@ _Last reviewed: 2025-10-09_
 
 ## Status Updates
 - **2025-10-09:** Foundation tasks landed in Git (MapLibre dependency wiring, baseline morph layer implementation, and marker-based glyph adapter with documented CustomLayerInterface upgrade path).
+- **2025-10-09:** Basemap effect interpolation added to the MapLibre morph helper, enabling opacity/brightness transitions via paint properties.
 
 ## Current State Assessment
 - `src/adapters/leaflet/*` exposes Leaflet helpers for layer creation, glyph rendering, and basemap styling.
@@ -53,8 +54,8 @@ _Last reviewed: 2025-10-09_
 - Start with marker-based overlay for parity; document upgrade path to custom layer with batched canvas rendering for performance-critical cases.
 
 ### 4. Basemap & Visual Effects
-- Recreate blur/opacity/grayscale transitions using MapLibre style expressions applied to background/raster layers.
-- For effects unsupported via expressions, prototype a custom post-processing layer (offscreen framebuffer within `prerender`).
+- [x] Opacity/brightness transitions available via MapLibre paint-property interpolation (`basemapEffect`).
+- For effects unsupported via expressions (true blur, grayscale on vector layers), prototype a custom post-processing layer (offscreen framebuffer within `prerender`).
 
 ### 5. Controls & UI Integration
 - Replace Leaflet controls with MapLibre equivalents or lightweight HTML overlays.
