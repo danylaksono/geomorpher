@@ -1,6 +1,6 @@
 # geo-morpher
 
-Imperative GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with first-class Leaflet helpers and an in-progress MapLibre adapter.
+GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with a MapLibre-first adapter and Leaflet compatibility helpers.
 
 ![](demo.gif)
 
@@ -11,7 +11,7 @@ Imperative GeoJSON morphing utilities for animating between regular geography an
 npm install geo-morpher
 ```
 
-Bring your own Leaflet or MapLibre instance (both listed as peer dependencies).
+Bring your own MapLibre or Leaflet instance (both listed as peer dependencies). MapLibre is the default adapter; Leaflet remains supported for backward compatibility.
 
 ## Usage
 
@@ -24,11 +24,11 @@ src/
   lib/             # Shared runtime utilities (OSGB projection)
   utils/           # Data enrichment and projection helpers
 data/              # Sample Oxford LSOA datasets
-examples/          # Runnable native JS scripts
+examples/          # Runnable browser demos (MapLibre & Leaflet)
 test/              # node:test coverage for core behaviours
 ```
 
-### MapLibre adapter status
+### MapLibre adapter (default)
 
 - `createMapLibreMorphLayers` provisions GeoJSON sources and fill layers for regular, cartogram, and interpolated geometries, exposing an `updateMorphFactor` helper to drive tweening from UI controls.
 - `createMapLibreGlyphLayer` renders glyphs with `maplibregl.Marker` instances; enable `scaleWithZoom` to regenerate glyph markup as users zoom.
@@ -130,9 +130,9 @@ const customProjection = {
 };
 ```
 
-See `examples/custom-projection.js` for detailed examples.
+See `examples/maplibre/projections/index.html` for a browser-based custom projection demo.
 
-### 2. Drop the morph straight into Leaflet
+### 2. Drop the morph straight into Leaflet (compat)
 
 ```js
 import L from "leaflet";
@@ -180,6 +180,8 @@ Provide either `basemapLayer` (any Leaflet layer with a container) or `basemapEf
 ### 3. Overlay multivariate glyphs
 
 The glyph system is **completely customizable** with no hardcoded chart types. You provide a rendering function that can return any visualization you can create with HTML, SVG, Canvas, or third-party libraries like D3.js or Chart.js. The helper automatically keeps markers positioned and synchronized with the morphing geometry.
+
+See the full glyphs guide: `docs/glyphs.md`
 
 **Example with pie charts:**
 
@@ -262,7 +264,7 @@ By default `createLeafletGlyphLayer` will surface whatever the core `GeoMorpher`
 | field        | type     | description |
 |--------------|----------|-------------|
 | `feature`    | GeoJSON Feature | The rendered feature taken from the requested geography (`regular`, `cartogram`, or tweened). Includes `feature.properties` and a `centroid` array. |
-enum{} | Resolved via `getFeatureId(feature)` (defaults to `feature.properties.code ?? feature.properties.id`). |
+| `featureId`  | string  | Resolved via `getFeatureId(feature)` (defaults to `feature.properties.code ?? feature.properties.id`). |
 | `featureId`  | string  | Resolved via `getFeatureId(feature)` (defaults to `feature.properties.code ?? feature.properties.id`). |
 | `data`       | object \| null | When using the built-in lookup this is the morpher key entry: `{ code, population, data }`. The `data` property holds the *enriched* GeoJSON feature returned from `GeoMorpher.prepare()`—handy when you stored additional indicators during enrichment. |
 | `morpher`    | `GeoMorpher` | The instance you passed in, allowing on-demand queries (`getInterpolatedLookup`, etc.). |
@@ -425,7 +427,7 @@ When `scaleWithZoom` is enabled:
 - Glyphs automatically update when users zoom in/out
 - Call `glyphLayer.destroy()` to clean up zoom listeners when removing the layer
 
-A complete example is available at `examples/browser/zoom-scaling-glyphs.html`.
+A complete example is available at `examples/leaflet/zoom-scaling-glyphs.html`.
 
 ### Legacy wrapper
 
@@ -445,17 +447,11 @@ const result = await geoMorpher({
 console.log(result.tweenLookup);
 ```
 
-### Native JS example
+### Node script (removed)
 
-A runnable script using the bundled Oxford datasets lives in `examples/native.js`:
+The previous Node-only example has been removed in favor of browser-based demos under `examples/maplibre` and `examples/leaflet`.
 
-```bash
-node examples/native.js
-```
-
-It loads `data/oxford_lsoas_regular.json` and `data/oxford_lsoas_cartogram.json`, mirrors their population/household properties into a basic dataset, and prints counts plus a sample tweened feature—all without any bundlers or UI frameworks.
-
-### Native browser examples (Leaflet & MapLibre)
+### Native browser examples (MapLibre & Leaflet)
 
 Serve the browser demos to see geo-morpher running on top of either Leaflet or MapLibre without a build step. Dependencies are resolved via import maps to CDN-hosted ES modules.
 
@@ -464,14 +460,17 @@ npm run examples:browser
 ```
 
 Then open:
-- Leaflet demo: <http://localhost:4173/examples/browser/index.html>
-- MapLibre demo: <http://localhost:4173/examples/browser/maplibre/index.html>
+- MapLibre demo: <http://localhost:4173/examples/maplibre/index.html>
+- Indonesia (MapLibre): <http://localhost:4173/examples/maplibre/indonesia/index.html>
+- MapLibre (Projections): <http://localhost:4173/examples/maplibre/projections/index.html>
+- Leaflet demo: <http://localhost:4173/examples/leaflet/index.html>
+- Leaflet zoom-scaling: <http://localhost:4173/examples/leaflet/zoom-scaling-glyphs.html>
 
 Each demo provides a morph slider and glyph overlays; the MapLibre version showcases GPU-driven rendering, paint-property basemap fading, and DOM marker glyphs running through the new adapter. (An internet connection is required to fetch CDN-hosted modules and map tiles.)
 
 **Additional examples:**
-- `examples/browser/maplibre/index.html` - MapLibre adaptation with basemap paint-property effects and layer toggles
-- `examples/browser/zoom-scaling-glyphs.html` - Demonstrates zoom-responsive waffle charts that resize to fill cartogram polygons as you zoom in/out
+- `examples/maplibre/index.html` - MapLibre adaptation with basemap paint-property effects and layer toggles
+- `examples/leaflet/zoom-scaling-glyphs.html` - Demonstrates zoom-responsive waffle charts that resize to fill cartogram polygons as you zoom in/out
 
 ## Testing
 
@@ -484,3 +483,8 @@ npm test
 ## License
 
 MIT
+
+## Documentation
+
+- API Reference: `docs/api.md`
+- Glyphs Guide: `docs/glyphs.md`
