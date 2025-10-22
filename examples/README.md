@@ -18,6 +18,7 @@ Open in your browser:
 ### MapLibre
 - `http://localhost:4173/examples/maplibre/index.html`
 - `http://localhost:4173/examples/maplibre/indonesia/index.html`
+- `http://localhost:4173/examples/maplibre/projections/index.html`
 
 ### Leaflet
 - `http://localhost:4173/examples/leaflet/index.html`
@@ -37,10 +38,10 @@ All examples use import maps. Ensure the following mappings (adjust as needed):
     "@turf/turf": "https://esm.sh/@turf/turf@6.5.0?bundle",
     "@turf/helpers": "https://esm.sh/@turf/helpers@6.5.0?bundle",
     "flubber": "https://esm.sh/flubber@0.4.2?bundle",
-    "lodash/isEmpty.js": "https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/isEmpty.js",
-    "lodash/cloneDeep.js": "https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/cloneDeep.js",
-    "lodash/keyBy.js": "https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/keyBy.js",
-    "lodash/mapValues.js": "https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/mapValues.js"
+    "lodash/isEmpty.js": "https://esm.sh/lodash@4.17.21/isEmpty?bundle",
+    "lodash/cloneDeep.js": "https://esm.sh/lodash@4.17.21/cloneDeep?bundle",
+    "lodash/keyBy.js": "https://esm.sh/lodash@4.17.21/keyBy?bundle",
+    "lodash/mapValues.js": "https://esm.sh/lodash@4.17.21/mapValues?bundle"
   }
 }
 </script>
@@ -49,3 +50,4 @@ All examples use import maps. Ensure the following mappings (adjust as needed):
 Notes:
 - `@turf/turf` and `flubber` must use esm.sh with `?bundle`.
 - Leaflet works with jsDelivr `+esm`.
+- Raw Node examples have been converted; all demos are browser-based.

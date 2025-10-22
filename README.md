@@ -24,7 +24,7 @@ src/
   lib/             # Shared runtime utilities (OSGB projection)
   utils/           # Data enrichment and projection helpers
 data/              # Sample Oxford LSOA datasets
-examples/          # Runnable native JS scripts
+examples/          # Runnable browser demos (MapLibre & Leaflet)
 test/              # node:test coverage for core behaviours
 ```
 
@@ -130,7 +130,7 @@ const customProjection = {
 };
 ```
 
-See `examples/custom-projection.js` for detailed examples.
+See `examples/maplibre/projections/index.html` for a browser-based custom projection demo.
 
 ### 2. Drop the morph straight into Leaflet (compat)
 
@@ -427,7 +427,7 @@ When `scaleWithZoom` is enabled:
 - Glyphs automatically update when users zoom in/out
 - Call `glyphLayer.destroy()` to clean up zoom listeners when removing the layer
 
-A complete example is available at `examples/browser/zoom-scaling-glyphs.html`.
+A complete example is available at `examples/leaflet/zoom-scaling-glyphs.html`.
 
 ### Legacy wrapper
 
@@ -447,15 +447,9 @@ const result = await geoMorpher({
 console.log(result.tweenLookup);
 ```
 
-### Native JS example
+### Node script (removed)
 
-A runnable script using the bundled Oxford datasets lives in `examples/native.js`:
-
-```bash
-node examples/native.js
-```
-
-It loads `data/oxford_lsoas_regular.json` and `data/oxford_lsoas_cartogram.json`, mirrors their population/household properties into a basic dataset, and prints counts plus a sample tweened feature—all without any bundlers or UI frameworks.
+The previous Node-only example has been removed in favor of browser-based demos under `examples/maplibre` and `examples/leaflet`.
 
 ### Native browser examples (MapLibre & Leaflet)
 
@@ -468,6 +462,7 @@ npm run examples:browser
 Then open:
 - MapLibre demo: <http://localhost:4173/examples/maplibre/index.html>
 - Indonesia (MapLibre): <http://localhost:4173/examples/maplibre/indonesia/index.html>
+- MapLibre (Projections): <http://localhost:4173/examples/maplibre/projections/index.html>
 - Leaflet demo: <http://localhost:4173/examples/leaflet/index.html>
 - Leaflet zoom-scaling: <http://localhost:4173/examples/leaflet/zoom-scaling-glyphs.html>
 

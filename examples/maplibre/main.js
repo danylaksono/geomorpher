@@ -268,6 +268,8 @@ async function bootstrap() {
         maplibreNamespace: maplibregl,
       });
 
+      
+
       const applyLayerVisibility = () => {
         morphControls.setLayerVisibility({
           regular: regularToggle ? regularToggle.checked : true,
@@ -316,6 +318,8 @@ async function bootstrap() {
         morphControls.updateMorphFactor(value);
         if (glyphsVisible) {
           glyphControls.updateGlyphs({ morphFactor: value });
+          // Ensure immediate visual update of DOM markers during drag
+          map.triggerRepaint?.();
         }
       });
 

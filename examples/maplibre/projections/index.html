@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoMorpher · MapLibre Projections Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.8.0/dist/maplibre-gl.css" />
+    <style>
+        :root { color-scheme: light; }
+        body { margin: 0; font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; background: #f8fafc; color: #0f172a; min-height: 100vh; display: flex; flex-direction: column; }
+        header { padding: 1rem 1.5rem; background: white; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+        header h1 { margin: 0; font-size: 1.2rem; }
+        main { flex: 1; display: grid; gap: 1.5rem; padding: 1.5rem; grid-template-columns: minmax(260px, 360px) 1fr; }
+        @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+        .panel { background: white; border-radius: 1rem; box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08); padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .panel h2 { margin: 0; font-size: 1.05rem; }
+        .panel p { margin: 0; color: #64748b; line-height: 1.5; }
+        .row { display: grid; gap: 0.6rem; }
+        label { font-size: 0.95rem; font-weight: 600; color: #1f2937; }
+        input[type="range"], select { width: 100%; accent-color: #2563eb; }
+        #map { width: 100%; min-height: 70vh; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; }
+        footer { padding: 0.9rem 1.5rem 1.4rem; font-size: 0.83rem; color: #64748b; }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "maplibre-gl": "https://esm.sh/maplibre-gl@5.8.0?bundle",
+          "@turf/turf": "https://esm.sh/@turf/turf@6.5.0?bundle",
+          "@turf/helpers": "https://esm.sh/@turf/helpers@6.5.0?bundle",
+          "flubber": "https://esm.sh/flubber@0.4.2?bundle",
+          "lodash/cloneDeep.js": "https://esm.sh/lodash@4.17.21/cloneDeep?bundle",
+          "lodash/keyBy.js": "https://esm.sh/lodash@4.17.21/keyBy?bundle",
+          "lodash/mapValues.js": "https://esm.sh/lodash@4.17.21/mapValues?bundle",
+          "lodash/isEmpty.js": "https://esm.sh/lodash@4.17.21/isEmpty?bundle"
+        }
+      }
+    </script>
+</head>
+
+<body>
+    <header>
+        <h1>MapLibre Projections Demo</h1>
+        <span id="status">Loading…</span>
+    </header>
+    <main>
+        <section class="panel">
+            <div>
+                <h2>Custom projections in GeoMorpher</h2>
+                <p>Compare morphing with an identity WGS84 projection vs a custom UTM-like adapter.</p>
+            </div>
+            <div class="row">
+                <label for="scenario">Projection scenario</label>
+                <select id="scenario">
+                    <option value="wgs84">WGS84 (identity)</option>
+                    <option value="utm33n">Custom UTM 33N (approx)</option>
+                </select>
+            </div>
+            <div class="row">
+                <label for="morphFactor">Morph factor: <strong id="factorValue">0.00</strong></label>
+                <input id="morphFactor" type="range" min="0" max="1" step="0.05" value="0" />
+            </div>
+        </section>
+        <section class="panel" style="padding: 0; overflow: hidden;">
+            <div id="map"></div>
+        </section>
+    </main>
+    <footer>
+        Demo uses synthetic rectangles for clarity. Tiles © OpenStreetMap contributors.
+    </footer>
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>
+
+
+
