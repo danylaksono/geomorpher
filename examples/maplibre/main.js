@@ -3,7 +3,7 @@ import {
   GeoMorpher,
   createMapLibreMorphLayers,
   createMapLibreGlyphLayer,
-} from "../../../src/index.js";
+} from "../../src/index.js";
 
 const formatStat = (value) =>
   value.toLocaleString(undefined, {
@@ -56,7 +56,7 @@ const BASE_STYLE = {
 };
 
 async function fetchJSON(fileName) {
-  const url = new URL(`../../../data/${fileName}`, import.meta.url);
+  const url = new URL(`../../data/${fileName}`, import.meta.url);
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch ${fileName}: ${response.status}`);
@@ -337,3 +337,5 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+

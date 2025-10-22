@@ -91,40 +91,6 @@ async function bootstrap() {
       }
     }
 
-    const createPieChartSVG = (slices, { size = 56, stroke = "white" } = {}) => {
-      const radius = size / 2;
-      const center = radius;
-
-      const total = slices.reduce((sum, slice) => sum + Math.max(0, slice.value), 0);
-      if (!Number.isFinite(total) || total <= 0) {
-        return `<svg width="${size}" height="${size}"></svg>`;
-      }
-
-      let currentAngle = -Math.PI / 2;
-      const segments = slices
-        .filter((slice) => Number.isFinite(slice.value) && slice.value > 0)
-        .map((slice) => {
-          const angle = (slice.value / total) * Math.PI * 2;
-          const endAngle = currentAngle + angle;
-          const largeArc = angle > Math.PI ? 1 : 0;
-          const startX = center + radius * Math.cos(currentAngle);
-          const startY = center + radius * Math.sin(currentAngle);
-          const endX = center + radius * Math.cos(endAngle);
-          const endY = center + radius * Math.sin(endAngle);
-          const path = [
-            `M ${center} ${center}`,
-            `L ${startX.toFixed(2)} ${startY.toFixed(2)}`,
-            `A ${radius} ${radius} 0 ${largeArc} 1 ${endX.toFixed(2)} ${endY.toFixed(2)}`,
-            "Z",
-          ].join(" ");
-          currentAngle = endAngle;
-          return `<path d="${path}" fill="${slice.color}" stroke="${stroke}" stroke-width="1"></path>`;
-        });
-
-      const content = segments.join("");
-      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${content}</svg>`;
-    };
-
     const { group, regularLayer, tweenLayer, cartogramLayer, updateMorphFactor } =
       await createLeafletMorphLayers({
         morpher,
@@ -168,11 +134,34 @@ async function bootstrap() {
           return null;
         }
 
+        const radius = 26;
+        const size = 52;
+        const center = radius;
+        let currentAngle = -Math.PI / 2;
+        const total = slices.reduce((sum, s) => sum + s.value, 0);
+        const segments = slices.map((slice) => {
+          const angle = (slice.value / total) * Math.PI * 2;
+          const endAngle = currentAngle + angle;
+          const largeArc = angle > Math.PI ? 1 : 0;
+          const startX = center + radius * Math.cos(currentAngle);
+          const startY = center + radius * Math.sin(currentAngle);
+          const endX = center + radius * Math.cos(endAngle);
+          const endY = center + radius * Math.sin(endAngle);
+          const path = [
+            `M ${center} ${center}`,
+            `L ${startX.toFixed(2)} ${startY.toFixed(2)}`,
+            `A ${radius} ${radius} 0 ${largeArc} 1 ${endX.toFixed(2)} ${endY.toFixed(2)}`,
+            "Z",
+          ].join(" ");
+          currentAngle = endAngle;
+          return `<path d="${path}" fill="${slice.color}" stroke="white" stroke-width="1"></path>`;
+        });
+
         return {
-          html: createPieChartSVG(slices, { size: 52 }),
+          html: `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${segments.join("")}</svg>`,
           className: "pie-chart-marker",
-          iconSize: [52, 52],
-          iconAnchor: [26, 26],
+          iconSize: [size, size],
+          iconAnchor: [radius, radius],
         };
       },
     });
@@ -223,3 +212,5 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+

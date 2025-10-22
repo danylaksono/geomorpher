@@ -5,7 +5,7 @@ import {
   createMapLibreGlyphLayer,
   parseCSV,
   WGS84Projection,
-} from "../../../src/index.js";
+} from "../../src/index.js";
 
 const metrics = [
   {
@@ -100,7 +100,7 @@ const cartogramToggle = document.getElementById("toggle-cartogram");
 const glyphToggle = document.getElementById("toggle-glyphs");
 
 async function fetchJSON(fileName) {
-  const response = await fetch(new URL(`../../../data/${fileName}`, import.meta.url));
+  const response = await fetch(new URL(`../../data/${fileName}`, import.meta.url));
   if (!response.ok) {
     throw new Error(`Failed to fetch ${fileName}: ${response.status}`);
   }
@@ -108,7 +108,7 @@ async function fetchJSON(fileName) {
 }
 
 async function fetchText(fileName) {
-  const response = await fetch(new URL(`../../../data/${fileName}`, import.meta.url));
+  const response = await fetch(new URL(`../../data/${fileName}`, import.meta.url));
   if (!response.ok) {
     throw new Error(`Failed to fetch ${fileName}: ${response.status}`);
   }
@@ -398,3 +398,5 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+

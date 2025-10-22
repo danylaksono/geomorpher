@@ -23,6 +23,10 @@ export {
 	normalizeCartogramInput,
 };
 
+// MapLibre-first convenience aliases (default adapter)
+export const createMorphLayers = createMapLibreMorphLayers;
+export const createGlyphLayer = createMapLibreGlyphLayer;
+
 export async function geoMorpher(options) {
 	const morpher = new GeoMorpher(options);
 	await morpher.prepare();

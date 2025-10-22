@@ -1,7 +1,7 @@
 {
     "name": "geo-morpher",
     "version": "0.1.0",
-    "description": "Imperative GeoJSON morphing utilities with Leaflet integration",
+    "description": "GeoJSON morphing utilities with MapLibre-first adapter and Leaflet compatibility",
     "type": "module",
     "main": "morphs.js",
     "exports": {
@@ -25,9 +25,11 @@
     ],
     "scripts": {
         "test": "node --test",
-        "examples:browser": "npx http-server -p 4173 ."
+        "examples:browser": "npx http-server -p 4173 .",
+        "build": "rollup -c"
     },
     "keywords": [
+        "maplibre",
         "leaflet",
         "geojson",
         "cartogram",
@@ -45,10 +47,17 @@
         "@turf/turf": "^6.5.0",
         "flubber": "^0.4.2",
         "lodash": "^4.17.21",
-        "maplibre-gl": "^5.8.0"
+        "maplibre-gl": ">=5.8.0"
     },
     "peerDependencies": {
         "leaflet": ">=1.7.0",
         "maplibre-gl": ">=5.8.0"
+    },
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^25.0.8",
+        "@rollup/plugin-json": "^6.1.0",
+        "@rollup/plugin-node-resolve": "^15.3.1",
+        "@rollup/plugin-terser": "^0.4.4",
+        "rollup": "^4.52.5"
     }
 }
