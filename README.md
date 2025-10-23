@@ -12,7 +12,6 @@ GeoJSON morphing utilities for animating between regular geography and cartogram
 
 This library is currently in early-stage development (v0.1.0) and has recently completed a migration to a MapLibre-first adapter. The core morphing engine is stable, but the MapLibre adapter is new and under active development. Leaflet compatibility is maintained. Community feedback and contributions are welcome.
 
-Track ongoing enhancements and open items in `docs/maplibre-migration-plan.md` before relying on the adapter in production.
 
 ## Installation
 
