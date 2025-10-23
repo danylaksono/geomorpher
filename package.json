@@ -1,6 +1,6 @@
 {
     "name": "geo-morpher",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "GeoJSON morphing utilities with MapLibre-first adapter and Leaflet compatibility",
     "type": "module",
     "main": "morphs.js",
