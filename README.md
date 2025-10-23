@@ -1,9 +1,18 @@
 # geo-morpher
 
+[![npm version](https://badge.fury.io/js/geo-morpher.svg)](https://badge.fury.io/js/geo-morpher)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with a MapLibre-first adapter and Leaflet compatibility helpers.
 
 ![](demo.gif)
 
+
+## Status
+
+This library is currently in early-stage development (v0.1.0) and has recently completed a migration to a MapLibre-first adapter. The core morphing engine is stable, but the MapLibre adapter is new and under active development. Leaflet compatibility is maintained. Community feedback and contributions are welcome.
+
+Track ongoing enhancements and open items in `docs/maplibre-migration-plan.md` before relying on the adapter in production.
 
 ## Installation
 
@@ -264,7 +273,6 @@ By default `createLeafletGlyphLayer` will surface whatever the core `GeoMorpher`
 | field        | type     | description |
 |--------------|----------|-------------|
 | `feature`    | GeoJSON Feature | The rendered feature taken from the requested geography (`regular`, `cartogram`, or tweened). Includes `feature.properties` and a `centroid` array. |
-| `featureId`  | string  | Resolved via `getFeatureId(feature)` (defaults to `feature.properties.code ?? feature.properties.id`). |
 | `featureId`  | string  | Resolved via `getFeatureId(feature)` (defaults to `feature.properties.code ?? feature.properties.id`). |
 | `data`       | object \| null | When using the built-in lookup this is the morpher key entry: `{ code, population, data }`. The `data` property holds the *enriched* GeoJSON feature returned from `GeoMorpher.prepare()`—handy when you stored additional indicators during enrichment. |
 | `morpher`    | `GeoMorpher` | The instance you passed in, allowing on-demand queries (`getInterpolatedLookup`, etc.). |
