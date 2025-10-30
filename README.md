@@ -10,7 +10,7 @@ GeoJSON morphing utilities for animating between regular geography and cartogram
 
 ## Status
 
-This library is currently in early-stage development (v0.1.0) and has recently completed a migration to a MapLibre-first adapter. The core morphing engine is stable, but the MapLibre adapter is new and under active development. Leaflet compatibility is maintained. Community feedback and contributions are welcome.
+This library is currently in early-stage development (v0.1.1) and has recently completed a migration to a MapLibre-first adapter. The core morphing engine is stable, but the MapLibre adapter is new and under active development. Leaflet compatibility is maintained. Community feedback and contributions are welcome.
 
 
 ## Installation
@@ -19,7 +19,7 @@ This library is currently in early-stage development (v0.1.0) and has recently c
 npm install geo-morpher
 ```
 
-Bring your own MapLibre or Leaflet instance (both listed as peer dependencies). MapLibre is the default adapter; Leaflet remains supported for backward compatibility.
+Leaflet is provided as a peer dependency—bring your own Leaflet instance when using the compatibility helpers. MapLibre remains the default adapter and is bundled as a dependency for out-of-the-box usage; if your build already supplies `maplibre-gl`, mark it as external to avoid duplicating the library.
 
 ## Usage
 
@@ -42,7 +42,6 @@ test/              # node:test coverage for core behaviours
 - `createMapLibreGlyphLayer` renders glyphs with `maplibregl.Marker` instances; enable `scaleWithZoom` to regenerate glyph markup as users zoom.
 - Pass your MapLibre namespace explicitly (`maplibreNamespace: maplibregl`) when calling glyph helpers in module-bundled builds where `maplibregl` is not attached to `globalThis`.
 - For heavy glyph scenes, consider upgrading to a [CustomLayerInterface](https://www.maplibre.org/maplibre-gl-js/docs/API/interfaces/CustomLayerInterface/) implementation that batches drawing on the GPU. The marker pipeline keeps the API simple while offering a documented migration path.
-- Track ongoing enhancements and open items in `docs/maplibre-migration-plan.md` before relying on the adapter in production.
 
 #### MapLibre basemap effects
 

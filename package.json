@@ -3,9 +3,9 @@
     "version": "0.1.1",
     "description": "GeoJSON morphing utilities with MapLibre-first adapter and Leaflet compatibility",
     "type": "module",
-    "main": "morphs.js",
+    "main": "src/index.js",
     "exports": {
-        ".": "./morphs.js",
+        ".": "./src/index.js",
         "./leaflet": "./src/adapters/leaflet/index.js",
         "./leaflet/morph": "./src/adapters/leaflet/morphLayers.js",
         "./leaflet/glyph": "./src/adapters/leaflet/glyphLayer.js",
@@ -17,7 +17,6 @@
         "./core/geomorpher": "./src/core/geomorpher.js"
     },
     "files": [
-        "morphs.js",
         "src",
         "data",
         "examples",

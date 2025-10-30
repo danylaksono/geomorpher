@@ -124,7 +124,7 @@ const drawPie = ({ data, feature }) => {
     const r = 26, cx=26, cy=26;
     const x1 = cx + r*Math.cos(start), y1 = cy + r*Math.sin(start);
     const x2 = cx + r*Math.cos(end),   y2 = cy + r*Math.sin(end);
-    const colors = ["#4e79a7", "#f28e2c"]; 
+    const colors = ["#4e79a7", "#f28e2c"];
     return `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z" fill="${colors[i]}"/>`;
   }).join("");
   return { html: `<svg width="52" height="52">${slices}</svg>`, iconSize:[52,52], iconAnchor:[26,26] };
@@ -292,5 +292,77 @@ glyph.updateGlyphs({ geometry: "interpolated", morphFactor: 0.6 });
 - `examples/leaflet/zoom-scaling-glyphs.html` for a complete zoom-scaling demo
 - `README.md` sections on glyphs for quick examples
 - MapLibre CustomLayerInterface for advanced GPU rendering
+
+---
+
+## End-to-end glyph workflow checklist
+
+1. Confirm that `GeoMorpher` is prepared and that `getKeyData()` returns the metrics your glyphs will render.
+2. Decide which geometry your glyphs should follow (`regular`, `cartogram`, or `interpolated`) and whether the morph factor should influence styling (colours, numeric labels, etc.).
+3. Implement `drawGlyph` with a focus on idempotency. The adapters call it frequently; returning a similar structure lets them reuse markers instead of tearing them down.
+4. When you need extra context (remote data, UI state), inject it via closures or use `getGlyphData` to attach custom payloads.
+5. Wire `updateGlyphs` together with `updateMorphFactor` so the overlay and geometry remain synchronized during animations or slider interactions.
+6. If you add glyph layers dynamically, call `destroy()` when removing them to clean up event listeners and markers.
+
+---
+
+## Interactivity patterns
+
+- **Hover tooltips**: in Leaflet, set `{ interactive: true }` in `markerOptions` and attach `mouseover`/`mouseout` listeners on the returned `L.Marker`. In MapLibre, read `marker.getElement()` after creation and wire DOM events directly.
+- **Selection state**: store selected feature ids externally and apply CSS classes in `drawGlyph` (e.g., return `{ className: selected.has(featureId) ? "glyph glyph--selected" : "glyph" }`). Remember to call `updateGlyphs` after state changes so markers refresh.
+- **ARIA / accessibility**: glyphs are ordinary DOM; apply `role`, `aria-label`, or keyboard handlers inside `drawGlyph` when building interactive overlays.
+
+---
+
+## Animation strategies
+
+- For slider-driven morphs, update glyphs inside the same event handler that calls `updateMorphFactor`.
+- For scripted animations (`requestAnimationFrame`), update the morph factor every frame but throttle glyph updates (e.g., every third frame) to balance smoothness and DOM churn.
+- When animating numeric text inside glyphs, consider transitions driven by CSS or `requestAnimationFrame` within `drawGlyph`-generated components to avoid reconstructing DOM nodes on each tick.
+
+---
+
+## Performance instrumentation
+
+- Use the browser’s Performance panel to profile long morph animations. Look for repeated layout or style recalculations inside glyph containers.
+- In MapLibre, inspect `marker.getElement()` and ensure it does not trigger layout thrashing (avoid querying layout-dependent properties during animation).
+- When rendering thousands of glyphs, batch expensive computations outside `drawGlyph`. For example, precompute colour ramps or thresholds once per animation frame and reuse them.
+
+---
+
+## Debugging tips
+
+- Log the glyph context when diagnosing unexpected output:
+
+```js
+const drawGlyph = (context) => {
+  if (!context.data) {
+    console.warn("Missing glyph data", context.featureId, context);
+    return null;
+  }
+  // ...return glyph structure
+};
+```
+
+- If glyphs appear in the wrong location, check the centroid by inspecting `context.feature.centroid`. For MapLibre with `scaleWithZoom`, verify `featureBounds.center` matches expectations.
+- For Leaflet, ensure the map has finished initialising before adding glyph layers; otherwise `map.latLngToContainerPoint` can return stale values.
+
+---
+
+## Testing glyph renderers
+
+- Snapshot-test `drawGlyph` outputs using a DOM testing library (e.g., @testing-library/dom) to ensure structural stability when refactoring.
+- Write integration tests that initialise a morpher in Node, call `updateGlyphs`, and assert the number of markers created for given filters.
+- Include visual regression tests (Percy, Loki, etc.) for complex SVG glyphs to catch unexpected styling changes across morph factors or zoom levels.
+
+---
+
+## Deployment considerations
+
+- Glyph helpers rely on DOM availability. When server-side rendering, guard their initialisation behind an environment check (`typeof window !== "undefined"`).
+- When bundling, ensure MapLibre or Leaflet assets (CSS, images) are loaded before glyphs mount; otherwise marker classes may render unstyled.
+- For production builds, expose a flag to disable glyphs when performance budgets are tight or add a `filterFeature` guard that drops low-importance features on slower hardware.
+
+Use this guide as a living reference while iterating on overlay designs. Combine it with `docs/api.md` for morpher lifecycle details and the examples directory for working end-to-end implementations.
 
 
