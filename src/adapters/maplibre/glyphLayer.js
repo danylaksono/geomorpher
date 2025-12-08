@@ -5,7 +5,7 @@
  * alternative of using a CustomLayerInterface for high-volume glyph rendering.
  */
 
-import { DEFAULT_GEOMETRY, resolveCollection } from "../leaflet/utils/collections.js";
+import { DEFAULT_GEOMETRY, resolveCollection } from "../shared/collections.js";
 import { toLngLat, getFeatureBoundsInPixels } from "./utils/coordinates.js";
 import { normalizeGlyphResult } from "./utils/glyphNormalizer.js";
 
@@ -42,9 +42,15 @@ export async function createMapLibreGlyphLayer({
   markerOptions = {},
   scaleWithZoom = false,
   maplibreNamespace = fallbackNamespace,
+  featureProvider,
+  featureCollection,
 } = {}) {
-  if (!morpher || !map) {
-    throw new Error("Both morpher and MapLibre map are required");
+  if (!map) {
+    throw new Error("MapLibre map instance (map) is required");
+  }
+
+  if (!morpher && typeof featureProvider !== 'function' && !featureCollection) {
+    throw new Error("Either morpher or featureProvider/featureCollection must be supplied");
   }
 
   if (!maplibreNamespace?.Marker) {
@@ -55,14 +61,14 @@ export async function createMapLibreGlyphLayer({
     throw new Error("drawGlyph must be a function that returns glyph rendering options");
   }
 
-  if (!morpher.isPrepared()) {
+  if (morpher && !morpher.isPrepared()) {
     await morpher.prepare();
   }
 
   let currentGeometry = geometry ?? DEFAULT_GEOMETRY;
   let currentMorphFactor = morphFactor ?? 0;
 
-  const baseDataLookup = morpher.getKeyData();
+  const baseDataLookup = morpher ? morpher.getKeyData() : {};
   const markers = new Map();
 
   const resolveData = ({ featureId, feature }) => {
@@ -156,6 +162,15 @@ export async function createMapLibreGlyphLayer({
     entry.marker.remove();
   };
 
+  const getCollection = ({ geometry: g = currentGeometry, morphFactor: m = currentMorphFactor } = {}) => {
+    if (typeof featureProvider === "function") {
+      return featureProvider({ geometry: g, morphFactor: m });
+    }
+    if (featureCollection) return featureCollection;
+    if (morpher) return resolveCollection({ morpher, geometry: g, morphFactor: m });
+    return null;
+  };
+
   const updateGlyphs = ({ geometry: nextGeometry, morphFactor: nextMorph } = {}) => {
     if (typeof nextGeometry !== "undefined") {
       currentGeometry = nextGeometry;
@@ -164,11 +179,7 @@ export async function createMapLibreGlyphLayer({
       currentMorphFactor = nextMorph;
     }
 
-    const collection = resolveCollection({
-      morpher,
-      geometry: currentGeometry,
-      morphFactor: currentMorphFactor,
-    });
+    const collection = getCollection({ geometry: currentGeometry, morphFactor: currentMorphFactor });
 
     if (!collection?.features) {
       markers.forEach((_, id) => removeMarker(id));

@@ -5,11 +5,7 @@
 
 const fallbackNamespace = typeof globalThis !== "undefined" ? globalThis.maplibregl : undefined;
 
-/**
- * Check if a value is an HTMLElement
- */
-export const isHTMLElement = (value) =>
-  typeof HTMLElement !== "undefined" && value instanceof HTMLElement;
+export { isHTMLElement } from "../../shared/dom.js";
 
 /**
  * Extract a [lng, lat] pair from a feature. Prefers `feature.centroid`
@@ -61,27 +57,7 @@ export function toLngLat(feature) {
   return [sumLng / count, sumLat / count];
 }
 
-const flattenPositions = (geometry) => {
-  if (!geometry) return [];
-  const { type, coordinates } = geometry;
-  if (!coordinates) return [];
-
-  switch (type) {
-    case "Point":
-      return [coordinates];
-    case "MultiPoint":
-    case "LineString":
-      return coordinates;
-    case "MultiLineString":
-      return coordinates.flat();
-    case "Polygon":
-      return coordinates.flat();
-    case "MultiPolygon":
-      return coordinates.flat(2);
-    default:
-      return [];
-  }
-};
+import { flattenPositions } from "../../shared/geometry.js";
 
 /**
  * Calculate the pixel bounds of a feature at the current map zoom.

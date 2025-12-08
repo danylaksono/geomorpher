@@ -4,6 +4,7 @@ import {
   createMapLibreMorphLayers,
   createMapLibreGlyphLayer,
 } from "../../src/index.js";
+import { flattenPositions } from "../../src/adapters/shared/geometry.js";
 
 const formatStat = (value) =>
   value.toLocaleString(undefined, {
@@ -64,27 +65,6 @@ async function fetchJSON(fileName) {
   return response.json();
 }
 
-const flattenPositions = (geometry) => {
-  if (!geometry) return [];
-  const { type, coordinates } = geometry;
-  if (!coordinates) return [];
-
-  switch (type) {
-    case "Point":
-      return [coordinates];
-    case "MultiPoint":
-    case "LineString":
-      return coordinates;
-    case "MultiLineString":
-      return coordinates.flat();
-    case "Polygon":
-      return coordinates.flat();
-    case "MultiPolygon":
-      return coordinates.flat(2);
-    default:
-      return [];
-  }
-};
 
 function computeBounds(featureCollection) {
   const bounds = new maplibregl.LngLatBounds();
@@ -268,6 +248,27 @@ async function bootstrap() {
         maplibreNamespace: maplibregl,
       });
 
+      // FeatureProvider demo: render an independent glyph layer using the provider API
+      const providerGlyphControls = await createMapLibreGlyphLayer({
+        map,
+        morphFactor: initialFactor,
+        geometry: "interpolated",
+        drawGlyph: ({ data, feature }) => {
+          const properties = data?.data?.properties ?? feature.properties ?? {};
+          const population = Number(properties.population ?? 0);
+          if (population <= 0) return null;
+          return {
+            html: `<div class="badge" title="${population}">${(population / 1000).toFixed(0)}k</div>`,
+            className: "provider-badge",
+            iconSize: [36, 24],
+            markerOptions: { pitchAlignment: "map" },
+          };
+        },
+        // Use featureProvider to construct a collection from the morpher (decoupled)
+        featureProvider: ({ geometry, morphFactor }) => morpher.getInterpolatedFeatureCollection(morphFactor),
+        maplibreNamespace: maplibregl,
+      });
+
       
 
       const applyLayerVisibility = () => {
@@ -280,8 +281,10 @@ async function bootstrap() {
         glyphsVisible = glyphToggle ? glyphToggle.checked : true;
         if (glyphsVisible) {
           glyphControls.updateGlyphs({ morphFactor: currentMorphFactor });
+          providerGlyphControls.updateGlyphs({ morphFactor: currentMorphFactor });
         } else {
           glyphControls.clear();
+          providerGlyphControls.clear();
         }
       };
 
@@ -318,6 +321,7 @@ async function bootstrap() {
         morphControls.updateMorphFactor(value);
         if (glyphsVisible) {
           glyphControls.updateGlyphs({ morphFactor: value });
+          providerGlyphControls.updateGlyphs({ morphFactor: value });
           // Ensure immediate visual update of DOM markers during drag
           map.triggerRepaint?.();
         }

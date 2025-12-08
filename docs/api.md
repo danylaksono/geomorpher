@@ -153,19 +153,23 @@ Purpose:
 - Place DOM-based glyphs (`maplibregl.Marker`) that remain anchored to morphing features.
 - Optionally rescale glyphs as users zoom (`scaleWithZoom`).
 
-Key parameters:
-- `morpher` *(required)* and `map` *(required)*.
+- `morpher` and `map`.
+  - The `map` instance is required.  `morpher` is optional IF you supply `featureProvider` or `featureCollection`.
+  - If `morpher` is omitted, `featureProvider` or `featureCollection` must be supplied.
 - `drawGlyph(context)` *(required)*: returns an HTML string, `HTMLElement`, or object `{ element, className, iconSize, iconAnchor, markerOptions }`. The `context` includes `feature`, `featureId`, `geometry`, `morphFactor`, `data`, `morpher`, `map`, `zoom`, and optional `featureBounds` when `scaleWithZoom` is `true`.
 - `morphFactor`: initial value when `geometry` is `'interpolated'`.
 - `geometry`: `'regular'`, `'cartogram'`, `'interpolated'`, or resolver function.
+ - `featureProvider`: optional function `({ geometry, morphFactor })` returning a GeoJSON FeatureCollection used to render glyphs. When present, the helper does not require `morpher`.
+ - `featureCollection`: optional static GeoJSON FeatureCollection to use for glyph placement; acts as an alternative to `morpher`.
 - `getGlyphData(context)`: hook to return custom payloads per feature.
 - `filterFeature(context)`: return `false` to skip glyph creation.
 - `markerOptions`: default marker options (offset, rotation alignment, etc.). Only options with dedicated setter methods can be updated after creation.
 - `scaleWithZoom`: automatically recompute glyphs on `zoomend`.
 - `maplibreNamespace`: pass your `maplibregl` import when it is not attached to `globalThis`.
 
-Controller surface:
+- Controller surface:
 - `updateGlyphs({ geometry, morphFactor })`: recompute glyphs and return `{ geometry, morphFactor, featureCount }`.
+  - `updateGlyphs({ geometry, morphFactor, featureProvider?, featureCollection? })`: recompute glyphs.
 - `clear()`: remove all markers.
 - `getState()`: inspect current geometry, morph factor, marker count, and `scaleWithZoom` flag.
 - `destroy()`: clear markers and detach `zoomend` listeners.
@@ -205,9 +209,23 @@ Return value:
 #### Leaflet – `createLeafletGlyphLayer(params)`
 
 - Mirrors the MapLibre glyph helper but returns Leaflet primitives.
-- `drawGlyph` can return an HTML string, `HTMLElement`, `{ html, className, iconSize, iconAnchor, pane, markerOptions, divIconOptions }`, or `{ icon: L.Icon }` when you want full control over the icon.
+  - `morpher` and `L` are the standard inputs. `morpher` is optional if `featureCollection` or `featureProvider` is supplied.
+- `drawGlyph` can return an HTML string, `HTMLElement`, `{ html, className, iconSize, iconAnchor, pane, markerOptions, divIconOptions }`, or `{ icon: L.Icon }`. When using `featureCollection` or `featureProvider` the value of `morpher` is ignored for the purposes of collection resolution.
 - Respect `scaleWithZoom` by using `featureBounds` (pixel width/height at the current zoom). The helper fires on `zoomend`, so pair it with throttled animations if needed.
 - Remember to call `destroy()` when tearing down the layer to remove zoom listeners and clear markers.
+
+Addendum — featureProvider / featureCollection
+- `featureProvider({ geometry, morphFactor })` returns a FeatureCollection that the glyph layer uses instead of calling `morpher.get*FeatureCollection()`; useful when you wish to source glyphs from an external dataset or derive glyph coordinates differently. Example:
+
+```js
+const glyphController = await createMapLibreGlyphLayer({
+  drawGlyph: ({ feature, featureId }) => ({ html: `<div>${featureId}</div>` }),
+  featureProvider: ({ geometry, morphFactor }) => someCustomProvider(geometry, morphFactor),
+  map,
+});
+```
+
+`featureCollection` is a static GeoJSON FeatureCollection passed directly to the glyph controller at creation time. It allows purely client-side glyph rendering without a `morpher`.
 
 ---
 
@@ -219,6 +237,10 @@ Return value:
 - `createProj4Projection(projDefinition)`: Node-only helper that wraps `proj4` and returns `{ toGeo }`. Throws if `proj4` is unavailable or you call it in the browser.
 - `parseCSV(text)`: lightweight CSV parser that yields an array of objects keyed by column name—convenient for transforming statistical tables before enrichment.
 - `createGridCartogramFeatureCollection(...)` and `normalizeCartogramInput(...)`: helpers for turning waffle/grid cartogram inputs into FeatureCollections GeoMorpher can consume.
+
+Adapter helper exports
+- `createLeafletIcon(normalized)`: helper that converts a normalized glyph result into a `L.divIcon` (useful for tests or manual icon creation).
+- `createMapLibreMarkerData(normalized)`: returns `{ element, markerOptions }` suitable for creating a `maplibregl.Marker` from a normalized glyph result. These helpers are re-exported from `src/adapters/*/index.js` and from the top-level `src/index.js` for convenience.
 
 ---
 
@@ -273,6 +295,18 @@ slider.addEventListener("input", (event) => {
   const factor = Number(event.target.value) / 100;
   morphController.updateMorphFactor(factor);
   glyphController.updateGlyphs({ morphFactor: factor });
+});
+
+// Decoupled provider example – render glyphs from a provider function instead
+const providerController = await createMapLibreGlyphLayer({
+  map,
+  drawGlyph: ({ feature }) => ({ html: `<div>${feature.properties.code}</div>` }),
+  featureProvider: ({ geometry, morphFactor }) => morpher.getInterpolatedFeatureCollection(morphFactor),
+});
+slider.addEventListener("input", (event) => {
+  const factor = Number(event.target.value) / 100;
+  morphController.updateMorphFactor(factor);
+  providerController.updateGlyphs({ morphFactor: factor });
 });
 ```
 

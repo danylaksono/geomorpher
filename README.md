@@ -240,6 +240,24 @@ slider.addEventListener("input", (event) => {
   updateMorphFactor(value);
   glyphLayer.updateGlyphs({ morphFactor: value });
 });
+
+// You can also decouple glyphs from the GeoMorpher by providing a
+// `featureCollection` or a live `featureProvider({ geometry, morphFactor })`:
+//
+// const glyph = await createLeafletGlyphLayer({
+//   drawGlyph,
+//   L,
+//   featureCollection: morpher.getRegularFeatureCollection(), // static set
+// });
+//
+// const glyphProvider = await createLeafletGlyphLayer({
+//   drawGlyph,
+//   L,
+//   featureProvider: ({ geometry, morphFactor }) => morpher.getInterpolatedFeatureCollection(morphFactor),
+// });
+//
+// The adapters also export small helper functions to convert normalized glyph values
+// into platform-specific objects: `createLeafletIcon` and `createMapLibreMarkerData`.
 ```
 
 `drawGlyph` receives `{ feature, featureId, data, morpher, geometry, morphFactor }` and can return:

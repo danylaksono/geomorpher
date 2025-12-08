@@ -14,3 +14,5 @@ export {
 } from "./utils/glyphNormalizer.js";
 
 export { DEFAULT_GEOMETRY } from "./utils/collections.js";
+
+export { createLeafletIcon } from "../shared/markerAdapter.js";

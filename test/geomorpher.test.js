@@ -299,6 +299,85 @@ test("Glyph layer renders markers and updates with morph factor", async () => {
   assert.equal(layer.layers.size, 0);
 });
 
+test("Adapter parity: featureCollection and featureProvider produce same glyph counts", async () => {
+  const morpher = new GeoMorpher({ regularGeoJSON, cartogramGeoJSON, data: sampleData, aggregations: { population: 'sum', households: 'sum' } });
+  await morpher.prepare();
+
+  const collection = morpher.getRegularFeatureCollection();
+
+  // Reuse our Leaflet fakes
+  class FakeLayerGroup { constructor() { this.layers = new Set(); } addLayer(l) { this.layers.add(l); l.parentGroup = this; } removeLayer(l) { this.layers.delete(l); } clearLayers() { this.layers.clear(); } addTo(map){ this.addedTo = map; return this;} }
+  class FakeDivIcon { constructor(o){ this.options = o; } }
+  class FakeMarker { constructor(latlng, options = {}) { this.latlng = latlng; this.options = options; this.icon = options.icon ?? null; this.parentGroup = null; } addTo(group){ if(group?.addLayer) group.addLayer(this); return this; } remove(){ this.parentGroup?.removeLayer(this); } setLatLng(latlng){ this.latlng = latlng;} setIcon(icon){ this.icon = icon; } }
+
+  const L = { layerGroup(){ return new FakeLayerGroup(); }, divIcon(opts){ return new FakeDivIcon(opts); }, marker(latlng, options){ return new FakeMarker(latlng, options); } };
+
+  const leafletGlyph = await createLeafletGlyphLayer({ morpher, L, geometry: 'regular', drawGlyph: ({ feature }) => ({ html: `<div>${feature.properties.code}</div>` }), featureCollection: collection, markerOptions: { interactive: false } });
+  const leafletCount = leafletGlyph.getState().markerCount;
+
+  // Minimal MapLibre-like mocks
+  const fakeMap = { markers: new Set(), getZoom(){ return 10; }, project(){ return { x: 0, y: 0 }; } };
+  const maplibreNS = {
+    Marker: class {
+      constructor(opts) {
+        this.element = opts.element;
+      }
+      setLngLat() { return this; }
+      addTo(map) { map.markers.add(this); this.addedTo = map; return this; }
+      remove() { this.addedTo.markers.delete(this); }
+      setOffset() {}
+      setRotation() {}
+      setPitchAlignment() {}
+      setRotationAlignment() {}
+    }
+  };
+
+  const maplibreGlyph = await createMapLibreGlyphLayer({ morpher, map: fakeMap, drawGlyph: ({ feature }) => ({ html: `<div>${feature.properties.code}</div>` }), featureCollection: collection, maplibreNamespace: maplibreNS });
+  const maplibreCount = maplibreGlyph.getState().markerCount;
+
+  assert.equal(leafletCount, maplibreCount);
+
+  // Now test featureProvider parity (dynamic provider control)
+  const provider = ({ geometry, morphFactor }) => {
+    const c = morpher.getInterpolatedFeatureCollection(morphFactor);
+    if (morphFactor < 0.5) {
+      c.features = c.features.filter((_, i) => i % 2 === 0);
+    }
+    return c;
+  };
+
+  const lf2 = await createLeafletGlyphLayer({ L, drawGlyph: ({ feature }) => ({ html: `<div>${feature.properties.code}</div>` }), featureProvider: provider });
+  const ml2 = await createMapLibreGlyphLayer({ map: fakeMap, drawGlyph: ({ feature }) => ({ html: `<div>${feature.properties.code}</div>` }), featureProvider: provider, maplibreNamespace: maplibreNS });
+
+  // initial 0 factor
+  const lfState0 = lf2.updateGlyphs({ morphFactor: 0 });
+  const mlState0 = ml2.updateGlyphs({ morphFactor: 0 });
+  assert.equal(lfState0.featureCount, mlState0.featureCount);
+
+  // morphFactor 1 should have full feature set parity
+  const lfState1 = lf2.updateGlyphs({ morphFactor: 1 });
+  const mlState1 = ml2.updateGlyphs({ morphFactor: 1 });
+  assert.equal(lfState1.featureCount, mlState1.featureCount);
+});
+
+test("Shared marker adapters produce platform data", async () => {
+  const { normalizeRawGlyphResult } = await import("../src/adapters/shared/glyphNormalizer.js");
+  const { createLeafletIcon } = await import("../src/adapters/leaflet/index.js");
+  const { normalizeForMapLibre } = await import("../src/adapters/shared/markerAdapter.js");
+
+  const sample = { html: '<div class="x">hi</div>', iconSize: [20, 20], iconAnchor: [10, 10] };
+  const normalized = normalizeRawGlyphResult({ result: sample });
+
+  // Create Leaflet icon via helper (fake L
+  const fakeL = { divIcon: (opts) => ({ opts }) };
+  const leafletIcon = createLeafletIcon({ L: fakeL, normalized, pane: 'glyphs' });
+  assert.ok(leafletIcon);
+
+  const maplibreData = normalizeForMapLibre({ normalized });
+  assert.ok(maplibreData);
+  assert.ok(maplibreData.element || maplibreData.markerOptions);
+});
+
 test("GeoMorpher supports grid-based cartogram input", async () => {
   const regular = {
     type: "FeatureCollection",

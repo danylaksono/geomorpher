@@ -20,6 +20,8 @@ Open in your browser:
 - `http://localhost:4173/examples/maplibre/indonesia/index.html`
 - `http://localhost:4173/examples/maplibre/projections/index.html`
 
+Note: MapLibre demos show both `morpher`-driven glyphs and `featureProvider`-driven glyphs to demonstrate decoupled glyph rendering.
+
 ### Leaflet
 - `http://localhost:4173/examples/leaflet/index.html`
 - `http://localhost:4173/examples/leaflet/zoom-scaling-glyphs.html`

@@ -6,6 +6,7 @@ import {
   parseCSV,
   WGS84Projection,
 } from "../../../src/index.js";
+import { flattenPositions } from "../../../src/adapters/shared/geometry.js";
 
 const metrics = [
   {
@@ -115,26 +116,6 @@ async function fetchText(fileName) {
   return response.text();
 }
 
-const flattenPositions = (geometry) => {
-  if (!geometry) return [];
-  const { type, coordinates } = geometry;
-  if (!coordinates) return [];
-  switch (type) {
-    case "Point":
-      return [coordinates];
-    case "MultiPoint":
-    case "LineString":
-      return coordinates;
-    case "MultiLineString":
-      return coordinates.flat();
-    case "Polygon":
-      return coordinates.flat();
-    case "MultiPolygon":
-      return coordinates.flat(2);
-    default:
-      return [];
-  }
-};
 
 function computeBounds(featureCollection) {
   const bounds = new maplibregl.LngLatBounds();
@@ -347,6 +328,25 @@ async function bootstrap() {
         maplibreNamespace: maplibregl,
       });
 
+      // Decoupled provider glyphs example: render a small badge per feature using a provider
+      const providerGlyphControls = await createMapLibreGlyphLayer({
+        map,
+        morphFactor: initialFactor,
+        geometry: "interpolated",
+        drawGlyph: ({ feature }) => {
+          const featureCode = feature?.properties?.id;
+          const record = literacyById.get(String(featureCode));
+          const population = record?.Population ?? 0;
+          if (population <= 0) return null;
+          const el = document.createElement("div");
+          el.className = "provider-badge";
+          el.textContent = Math.round(population / 1000) + "k";
+          return { element: el, markerOptions: { pitchAlignment: "map" } };
+        },
+        featureProvider: ({ geometry, morphFactor }) => morpher.getInterpolatedFeatureCollection(morphFactor),
+        maplibreNamespace: maplibregl,
+      });
+
       const applyLayerVisibility = () => {
         morphControls.setLayerVisibility({
           regular: regularToggle ? regularToggle.checked : true,
@@ -356,8 +356,10 @@ async function bootstrap() {
 
         if (glyphToggle && !glyphToggle.checked) {
           glyphControls.clear();
+          providerGlyphControls.clear();
         } else {
           glyphControls.updateGlyphs({ morphFactor: Number(slider.value) });
+          providerGlyphControls.updateGlyphs({ morphFactor: Number(slider.value) });
         }
       };
 
@@ -380,6 +382,7 @@ async function bootstrap() {
         morphControls.updateMorphFactor(value);
         if (!glyphToggle || glyphToggle.checked) {
           glyphControls.updateGlyphs({ morphFactor: value });
+          providerGlyphControls.updateGlyphs({ morphFactor: value });
         }
       });
 

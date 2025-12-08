@@ -3,22 +3,13 @@
  * @module adapters/leaflet/utils/glyphNormalizer
  */
 
-import { isHTMLElement } from "./coordinates.js";
-
-/**
- * Default CSS class for glyph markers
- */
-export const DEFAULT_GLYPH_CLASS = "geomorpher-glyph";
-
-/**
- * Default icon size [width, height] in pixels
- */
-export const DEFAULT_ICON_SIZE = [48, 48];
-
-/**
- * Default icon anchor [x, y] in pixels
- */
-export const DEFAULT_ICON_ANCHOR = [24, 24];
+import {
+  DEFAULT_GLYPH_CLASS,
+  DEFAULT_ICON_SIZE,
+  DEFAULT_ICON_ANCHOR,
+  normalizeRawGlyphResult,
+} from "../../shared/glyphNormalizer.js";
+import { createLeafletIcon } from "../../shared/markerAdapter.js";
 
 /**
  * Normalize various glyph result formats into a consistent object
@@ -30,65 +21,19 @@ export const DEFAULT_ICON_ANCHOR = [24, 24];
  * @param {string} [params.pane] - Default pane name
  * @returns {Object|null} - Normalized glyph config or null
  */
-export function normalizeGlyphResult({
-  result,
-  L,
-  pane,
-}) {
+export function normalizeGlyphResult({ result, L, pane }) {
   if (result == null) {
     return null;
   }
+  const normalized = normalizeRawGlyphResult({ result });
+  if (!normalized) return null;
 
-  if (isHTMLElement(result) || typeof result === "string") {
-    const html = isHTMLElement(result) ? result.outerHTML : result;
-    return {
-      icon: L.divIcon({
-        html,
-        className: DEFAULT_GLYPH_CLASS,
-        iconSize: DEFAULT_ICON_SIZE,
-        iconAnchor: DEFAULT_ICON_ANCHOR,
-        pane,
-      }),
-      pane,
-    };
-  }
-
-  if (typeof result === "object") {
-    if (result.icon) {
-      return {
-        icon: result.icon,
-        pane: result.pane ?? pane,
-        markerOptions: result.markerOptions ?? {},
-      };
-    }
-
-    const {
-      html = "",
-      className = DEFAULT_GLYPH_CLASS,
-      iconSize,
-      iconAnchor,
-      pane: resultPane,
-      markerOptions = {},
-      divIconOptions = {},
-    } = result;
-
-    const htmlContent = isHTMLElement(html) ? html.outerHTML : html;
-
-    const icon = L.divIcon({
-      html: htmlContent,
-      className,
-      iconSize: iconSize ?? DEFAULT_ICON_SIZE,
-      iconAnchor: iconAnchor ?? DEFAULT_ICON_ANCHOR,
-      pane: resultPane ?? pane,
-      ...divIconOptions,
-    });
-
-    return {
-      icon,
-      pane: resultPane ?? pane,
-      markerOptions,
-    };
-  }
-
-  return null;
+  // If the user already provided a Leaflet icon, pass it through via the helper.
+  const icon = createLeafletIcon({ L, normalized, pane });
+  if (!icon) return null;
+  return {
+    icon,
+    pane: normalized.pane ?? pane,
+    markerOptions: normalized.markerOptions ?? {},
+  };
 }

@@ -71,16 +71,21 @@ export async function createLeafletGlyphLayer({
   markerOptions = {},
   pane,
   scaleWithZoom = false,
+  featureProvider,
+  featureCollection,
 }) {
-  if (!morpher || !L) {
-    throw new Error("Both morpher and Leaflet namespace (L) are required");
+  if (!L) {
+    throw new Error("Leaflet namespace (L) is required");
+  }
+  if (!morpher && typeof featureProvider !== 'function' && !featureCollection) {
+    throw new Error("Either morpher or featureProvider/featureCollection must be supplied");
   }
 
   if (typeof drawGlyph !== "function") {
     throw new Error("drawGlyph must be a function that returns glyph rendering options");
   }
 
-  if (!morpher.isPrepared()) {
+  if (morpher && !morpher.isPrepared()) {
     await morpher.prepare();
   }
 
@@ -97,7 +102,7 @@ export async function createLeafletGlyphLayer({
   }
 
   const markers = new Map();
-  const baseDataLookup = morpher.getKeyData();
+  const baseDataLookup = morpher ? morpher.getKeyData() : {};
 
   const resolveData = ({ feature, featureId, geometryType, morphValue }) => {
     if (typeof getGlyphData === "function") {
@@ -170,6 +175,19 @@ export async function createLeafletGlyphLayer({
     }
   };
 
+  const getCollection = ({ geometry: g = currentGeometry, morphFactor: m = currentMorphFactor } = {}) => {
+    if (typeof featureProvider === "function") {
+      return featureProvider({ geometry: g, morphFactor: m });
+    }
+    if (featureCollection) {
+      return featureCollection;
+    }
+    if (morpher) {
+      return resolveCollection({ morpher, geometry: g, morphFactor: m });
+    }
+    return null;
+  };
+
   const updateGlyphs = ({ geometry: nextGeometry, morphFactor: nextMorph } = {}) => {
     if (typeof nextGeometry !== "undefined") {
       currentGeometry = nextGeometry;
@@ -178,11 +196,7 @@ export async function createLeafletGlyphLayer({
       currentMorphFactor = nextMorph;
     }
 
-    const collection = resolveCollection({
-      morpher,
-      geometry: currentGeometry,
-      morphFactor: currentMorphFactor,
-    });
+    const collection = getCollection({ geometry: currentGeometry, morphFactor: currentMorphFactor });
 
     if (!collection?.features) {
       markers.forEach((_, id) => removeMarker(id));

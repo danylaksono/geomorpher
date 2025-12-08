@@ -3,11 +3,7 @@
  * @module adapters/leaflet/utils/coordinates
  */
 
-/**
- * Check if a value is an HTMLElement
- */
-export const isHTMLElement = (value) =>
-  typeof HTMLElement !== "undefined" && value instanceof HTMLElement;
+export { isHTMLElement } from "../../shared/dom.js";
 
 /**
  * Extract a Leaflet-compatible [lat, lng] coordinate pair from a feature.

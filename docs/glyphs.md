@@ -55,16 +55,43 @@ const glyph = await createMapLibreGlyphLayer({
 glyph.updateGlyphs({ geometry: "interpolated", morphFactor: 0.5 });
 ```
 
+### Decoupled glyphs with featureCollection/featureProvider
+
+You can render glyphs from an arbitrary FeatureCollection or by passing a provider function that returns a collection based on the requested geometry and morph factor:
+
+```js
+// Static collection
+const glyphStatic = await createLeafletGlyphLayer({
+  drawGlyph,
+  L,
+  featureCollection: morpher.getRegularFeatureCollection(),
+});
+
+// Provider based on interpolated geometry
+const glyphDynamic = await createMapLibreGlyphLayer({
+  map,
+  maplibreNamespace: maplibregl,
+  drawGlyph,
+  featureProvider: ({ geometry, morphFactor }) => morpher.getInterpolatedFeatureCollection(morphFactor),
+});
+
+// Update both independently
+glyphStatic.updateGlyphs({ morphFactor: 0.5 });
+glyphDynamic.updateGlyphs({ morphFactor: 0.5 });
+```
+
+
 ---
 
 ## API overview
 
 ### Leaflet
 
-`createLeafletGlyphLayer({ morpher, L, map?, geometry='interpolated', morphFactor=0, drawGlyph, getFeatureId?, getGlyphData?, filterFeature?, markerOptions?, pane?, scaleWithZoom=false })`
+`createLeafletGlyphLayer({ morpher, L, map?, geometry='interpolated', morphFactor=0, drawGlyph, getFeatureId?, getGlyphData?, filterFeature?, markerOptions?, pane?, scaleWithZoom=false, featureProvider?, featureCollection? })`
 
-Returns a controller:
+- Returns a controller:
 - `layer: L.LayerGroup`
+- Accepts `featureProvider` (dynamic) or `featureCollection` (static) as an alternative source of features when `morpher` is not used.
 - `updateGlyphs({ geometry?, morphFactor? })`
 - `clear()`
 - `getState(): { geometry, morphFactor, markerCount, scaleWithZoom }`
@@ -80,10 +107,10 @@ Context fields: `feature, featureId, data, morpher, geometry, morphFactor, zoom,
 
 ### MapLibre
 
-`createMapLibreGlyphLayer({ morpher, map, drawGlyph, morphFactor=0, geometry='interpolated', getFeatureId?, getGlyphData?, filterFeature?, markerOptions?, scaleWithZoom=false, maplibreNamespace? })`
+`createMapLibreGlyphLayer({ morpher, map, drawGlyph, morphFactor=0, geometry='interpolated', getFeatureId?, getGlyphData?, filterFeature?, markerOptions?, scaleWithZoom=false, maplibreNamespace?, featureProvider?, featureCollection? })`
 
-Returns a controller:
-- `updateGlyphs({ geometry?, morphFactor? })`
+- Returns a controller:
+- `updateGlyphs({ geometry?, morphFactor?, featureProvider?, featureCollection? })` (optionally override where the controller sources its features each update)
 - `clear()`
 - `getState(): { geometry, morphFactor, markerCount, scaleWithZoom }`
 - `destroy()`
@@ -98,6 +125,10 @@ Context fields: `feature, featureId, data, morpher, geometry, morphFactor, map, 
 Notes:
 - Provide `maplibreNamespace` (e.g., `maplibregl`) in module-bundled builds where it is not on `globalThis`.
 - Only a subset of Marker options are settable via methods (`setOffset`, `setRotation`, `setPitchAlignment`, `setRotationAlignment`). Others must be encoded in your DOM.
+ - You may supply `featureCollection` to provide a static set of features to render glyphs for,
+   or `featureProvider({ geometry, morphFactor })` to dynamically supply an arbitrary feature collection
+   (for example, an interpolated collection or an external dataset). If neither is supplied, the
+   adapters default to calling `resolveCollection` with a `GeoMorpher` instance passed via `morpher`.
 
 ---
 
@@ -267,6 +298,20 @@ glyph.updateGlyphs({ geometry: "interpolated", morphFactor: 0.6 });
 - Only certain options are settable via marker methods; rely on DOM CSS for most styling.
 - `iconSize` and `iconAnchor` translate to element size and computed `offset`.
 - If `maplibregl` isn’t on `globalThis`, pass `maplibreNamespace`.
+
+- Shared helpers: The adapters expose shared normalization/marker helpers. Use `createLeafletIcon` and `createMapLibreMarkerData`
+  if you need to convert the normalized `drawGlyph` result into platform-specific objects yourself.
+
+Example: using the shared normalization and helpers
+
+```js
+import { normalizeRawGlyphResult } from 'geo-morpher/src/adapters/shared/glyphNormalizer.js';
+import { createLeafletIcon } from 'geo-morpher/src/adapters/leaflet/index.js';
+
+const normalized = normalizeRawGlyphResult({ result: { html: '<div>Hi</div>' } });
+const icon = createLeafletIcon({ L, normalized, pane: 'glyphs' });
+// icon is an L.divIcon instance you can use in tests or to create markers manually
+```
 
 ---
 
