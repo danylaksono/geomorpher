@@ -11,7 +11,7 @@ export {
   DEFAULT_GLYPH_CLASS,
   DEFAULT_ICON_SIZE,
   DEFAULT_ICON_ANCHOR,
-} from "./utils/glyphNormalizer.js";
+} from "../shared/glyphNormalizer.js";
 
 export { DEFAULT_GEOMETRY } from "./utils/collections.js";
 

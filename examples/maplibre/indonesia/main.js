@@ -328,24 +328,7 @@ async function bootstrap() {
         maplibreNamespace: maplibregl,
       });
 
-      // Decoupled provider glyphs example: render a small badge per feature using a provider
-      const providerGlyphControls = await createMapLibreGlyphLayer({
-        map,
-        morphFactor: initialFactor,
-        geometry: "interpolated",
-        drawGlyph: ({ feature }) => {
-          const featureCode = feature?.properties?.id;
-          const record = literacyById.get(String(featureCode));
-          const population = record?.Population ?? 0;
-          if (population <= 0) return null;
-          const el = document.createElement("div");
-          el.className = "provider-badge";
-          el.textContent = Math.round(population / 1000) + "k";
-          return { element: el, markerOptions: { pitchAlignment: "map" } };
-        },
-        featureProvider: ({ geometry, morphFactor }) => morpher.getInterpolatedFeatureCollection(morphFactor),
-        maplibreNamespace: maplibregl,
-      });
+      // (Provider glyphs removed from demo to avoid overlaying masks)
 
       const applyLayerVisibility = () => {
         morphControls.setLayerVisibility({
@@ -356,10 +339,8 @@ async function bootstrap() {
 
         if (glyphToggle && !glyphToggle.checked) {
           glyphControls.clear();
-          providerGlyphControls.clear();
         } else {
           glyphControls.updateGlyphs({ morphFactor: Number(slider.value) });
-          providerGlyphControls.updateGlyphs({ morphFactor: Number(slider.value) });
         }
       };
 
@@ -382,7 +363,6 @@ async function bootstrap() {
         morphControls.updateMorphFactor(value);
         if (!glyphToggle || glyphToggle.checked) {
           glyphControls.updateGlyphs({ morphFactor: value });
-          providerGlyphControls.updateGlyphs({ morphFactor: value });
         }
       });
 

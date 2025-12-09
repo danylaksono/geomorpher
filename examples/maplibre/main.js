@@ -248,26 +248,7 @@ async function bootstrap() {
         maplibreNamespace: maplibregl,
       });
 
-      // FeatureProvider demo: render an independent glyph layer using the provider API
-      const providerGlyphControls = await createMapLibreGlyphLayer({
-        map,
-        morphFactor: initialFactor,
-        geometry: "interpolated",
-        drawGlyph: ({ data, feature }) => {
-          const properties = data?.data?.properties ?? feature.properties ?? {};
-          const population = Number(properties.population ?? 0);
-          if (population <= 0) return null;
-          return {
-            html: `<div class="badge" title="${population}">${(population / 1000).toFixed(0)}k</div>`,
-            className: "provider-badge",
-            iconSize: [36, 24],
-            markerOptions: { pitchAlignment: "map" },
-          };
-        },
-        // Use featureProvider to construct a collection from the morpher (decoupled)
-        featureProvider: ({ geometry, morphFactor }) => morpher.getInterpolatedFeatureCollection(morphFactor),
-        maplibreNamespace: maplibregl,
-      });
+        // (Provider glyphs removed from demo to avoid overlaying masks)
 
       
 
@@ -281,10 +262,8 @@ async function bootstrap() {
         glyphsVisible = glyphToggle ? glyphToggle.checked : true;
         if (glyphsVisible) {
           glyphControls.updateGlyphs({ morphFactor: currentMorphFactor });
-          providerGlyphControls.updateGlyphs({ morphFactor: currentMorphFactor });
         } else {
           glyphControls.clear();
-          providerGlyphControls.clear();
         }
       };
 
@@ -321,7 +300,6 @@ async function bootstrap() {
         morphControls.updateMorphFactor(value);
         if (glyphsVisible) {
           glyphControls.updateGlyphs({ morphFactor: value });
-          providerGlyphControls.updateGlyphs({ morphFactor: value });
           // Ensure immediate visual update of DOM markers during drag
           map.triggerRepaint?.();
         }
