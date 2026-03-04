@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoMorpher · Winchester · MapLibre</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.8.0/dist/maplibre-gl.css" />
+    <style>
+        :root {
+            --page-bg: #0b1220;
+            --panel-bg: rgba(15, 23, 42, 0.73);
+            --accent: #a5b4fc;
+            --text-muted: #cbd5f5;
+            --border-soft: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 20% 20%, #1f2937, transparent 60%),
+                radial-gradient(circle at 80% 0%, #312e81, transparent 50%),
+                var(--page-bg);
+            color: white;
+        }
+
+        header {
+            padding: 1.25rem 1.5rem;
+            position: sticky;
+            top: 0;
+            backdrop-filter: blur(16px);
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.65));
+            border-bottom: 1px solid var(--border-soft);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+
+        header span {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) 1.4fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-soft);
+            border-radius: 28px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.55);
+            padding: 1.5rem;
+            backdrop-filter: blur(18px);
+        }
+
+        #map {
+            width: 100%;
+            min-height: 72vh;
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .panel h2 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .panel p {
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+            line-height: 1.4;
+        }
+
+        .layer-grid {
+            margin-top: 1.25rem;
+            display: grid;
+            gap: 1rem;
+        }
+
+        .layer-card {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 18px;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(15, 23, 42, 0.7));
+            transition: border 0.2s ease;
+        }
+
+        .layer-card[data-layer='msoa'] {
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.12), rgba(15, 23, 42, 0.7));
+        }
+
+        .layer-card[data-layer='ward'] {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(15, 23, 42, 0.7));
+        }
+
+        .layer-card h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            letter-spacing: 0.02em;
+        }
+
+        .layer-card .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 0.35rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .slider-row {
+            margin-top: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .slider-row input[type='range'] {
+            flex: 1;
+            accent-color: var(--accent);
+        }
+
+        .slider-value {
+            font-weight: 600;
+            color: white;
+            min-width: 2.75rem;
+            text-align: right;
+        }
+
+        .toggle-row {
+            margin-top: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pill {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            padding: 0.35rem 0.85rem;
+            font-size: 0.85rem;
+            display: flex;
+            gap: 0.35rem;
+            align-items: center;
+            color: var(--text-muted);
+        }
+
+        .pill input {
+            accent-color: var(--accent);
+            transform: scale(0.9);
+        }
+
+        footer {
+            padding: 1rem 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        code {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0.05rem 0.35rem;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 960px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext x='2' y='13' font-size='12'%3EGM%3C/text%3E%3C/svg%3E">
+    <script type="importmap">
+        {
+            "imports": {
+                "maplibre-gl": "https://esm.sh/maplibre-gl@5.8.0?bundle",
+                "@turf/turf": "https://esm.sh/@turf/turf@6.5.0?bundle",
+                "@turf/helpers": "https://esm.sh/@turf/helpers@6.5.0?bundle",
+                "flubber": "https://esm.sh/flubber@0.4.2?bundle",
+                "lodash/cloneDeep.js": "https://esm.sh/lodash@4.17.21/cloneDeep?bundle",
+                "lodash/keyBy.js": "https://esm.sh/lodash@4.17.21/keyBy?bundle",
+                "lodash/mapValues.js": "https://esm.sh/lodash@4.17.21/mapValues?bundle",
+                "lodash/isEmpty.js": "https://esm.sh/lodash@4.17.21/isEmpty?bundle"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <header>
+        <div>
+            <h1>GeoMorpher · Winchester (LSOA / MSOA / Wards)</h1>
+            <p style="margin:0; color:var(--text-muted); font-size:0.95rem">Dial the morph for each hierarchy while
+                watching the area glyphs shrink into place.</p>
+        </div>
+        <span id="status">Loading…</span>
+    </header>
+    <main>
+        <section class="panel">
+            <div>
+                <h2>Controls</h2>
+                <p>Each hierarchy has its own slider so you can morph levels independently. Use the "Link sliders"
+                    checkbox to drive every layer simultaneously. Click the "Test 50%" button for a quick peek
+                    halfway along the morph. Toggles let you hide the morph layers; area circles are off by default
+                    and, when enabled, update along with the morph so you can see how the area changes.</p>
+            </div>
+            <div class="layer-grid">
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <label class="pill" style="margin-bottom:0;"><input id="link-sliders" type="checkbox" />Link
+                        sliders</label>
+                    <button id="test-morph"
+                        style="margin-left:0.5rem; padding:0.3rem 0.6rem; border-radius:8px; background:rgba(255,255,255,0.04); color:var(--text-muted); border:1px solid rgba(255,255,255,0.06);">Test
+                        50%</button>
+                    <span style="color:var(--text-muted); font-size:0.9rem">When linked, moving one slider updates all
+                        layers</span>
+                </div>
+                <article class="layer-card" data-layer="lsoa">
+                    <div class="stat-row">
+                        <h3>LSOA</h3>
+                        <span>Count: <strong id="count-lsoa">–</strong></span>
+                    </div>
+                    <div class="slider-row">
+                        <input id="morphFactor-lsoa" type="range" min="0" max="1" step="0.01" value="0" />
+                        <span class="slider-value" id="factorValue-lsoa">0.00</span>
+                    </div>
+                    <div class="toggle-row">
+                        <label class="pill"><input id="toggle-lsoa-morph" type="checkbox" checked />Morph layers</label>
+                        <label class="pill"><input id="toggle-circles-lsoa" type="checkbox" />Area
+                            circles</label>
+                    </div>
+                </article>
+                <article class="layer-card" data-layer="msoa">
+                    <div class="stat-row">
+                        <h3>MSOA</h3>
+                        <span>Count: <strong id="count-msoa">–</strong></span>
+                    </div>
+                    <div class="slider-row">
+                        <input id="morphFactor-msoa" type="range" min="0" max="1" step="0.01" value="0" />
+                        <span class="slider-value" id="factorValue-msoa">0.00</span>
+                    </div>
+                    <div class="toggle-row">
+                        <label class="pill"><input id="toggle-msoa-morph" type="checkbox" checked />Morph layers</label>
+                        <label class="pill"><input id="toggle-circles-msoa" type="checkbox" />Area
+                            circles</label>
+                    </div>
+                </article>
+                <article class="layer-card" data-layer="ward">
+                    <div class="stat-row">
+                        <h3>Ward</h3>
+                        <span>Count: <strong id="count-ward">–</strong></span>
+                    </div>
+                    <div class="slider-row">
+                        <input id="morphFactor-ward" type="range" min="0" max="1" step="0.01" value="0" />
+                        <span class="slider-value" id="factorValue-ward">0.00</span>
+                    </div>
+                    <div class="toggle-row">
+                        <label class="pill"><input id="toggle-ward-morph" type="checkbox" checked />Morph layers</label>
+                        <label class="pill"><input id="toggle-circles-ward" type="checkbox" />Area
+                            circles</label>
+                    </div>
+                </article>
+            </div>
+        </section>
+        <section class="panel">
+            <div id="map"></div>
+        </section>
+    </main>
+    <footer>Data from <code>data/winchester/</code>. Tiles by OpenStreetMap.</footer>
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>

@@ -1,6 +1,6 @@
 import { GeoMorpher } from "./core/geomorpher.js";
 import { createLeafletMorphLayers, createLeafletGlyphLayer, createLeafletIcon } from "./adapters/leaflet/index.js";
-import { createMapLibreMorphLayers, createMapLibreGlyphLayer, createMapLibreMarkerData } from "./adapters/maplibre/index.js";
+import { createMapLibreMorphLayers, createMapLibreGlyphLayer, createMapLibreCustomGlyphLayer, createMapLibreMarkerData } from "./adapters/maplibre/index.js";
 import { WGS84Projection, WebMercatorProjection, isLikelyWGS84, createProj4Projection } from "./utils/projections.js";
 import { parseCSV } from "./utils/csv.js";
 import {
@@ -14,6 +14,7 @@ export {
   createLeafletGlyphLayer,
 	createMapLibreMorphLayers,
 	createMapLibreGlyphLayer,
+	createMapLibreCustomGlyphLayer,
 	// shared adapter helpers
 	createLeafletIcon,
 	createMapLibreMarkerData,

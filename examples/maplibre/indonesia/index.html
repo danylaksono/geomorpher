@@ -11,63 +11,68 @@
             color-scheme: light;
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-            background: #f8fafc;
-            color: #0f172a;
+            background: #0f172a;
+            color: #e2e8f0;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        header {
-            padding: 1rem 1.5rem;
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
+        #map {
+            width: 100%;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
 
-        header h1 {
-            margin: 0;
-            font-size: 1.2rem;
-        }
-
-        main {
-            flex: 1;
-            display: grid;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            grid-template-columns: minmax(260px, 360px) 1fr;
-        }
-
-        @media (max-width: 960px) {
-            main {
-                grid-template-columns: 1fr;
-            }
+        .overlay-controls {
+            position: fixed;
+            top: 1.5rem;
+            left: 1.5rem;
+            z-index: 10;
+            width: 100%;
+            max-width: 380px;
+            pointer-events: none;
         }
 
         .panel {
-            background: white;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
             border-radius: 1rem;
-            box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
             gap: 1.25rem;
+            pointer-events: all;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .panel h1 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: #f1f5f9;
         }
 
         .panel h2 {
             margin: 0;
-            font-size: 1.05rem;
+            font-size: 1rem;
+            color: #cbd5e1;
         }
 
         .panel p {
             margin: 0;
-            color: #64748b;
+            color: #94a3b8;
+            font-size: 0.9rem;
             line-height: 1.5;
         }
 
@@ -79,26 +84,38 @@
         }
 
         label {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #1f2937;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
         }
 
         input[type="range"] {
             width: 100%;
-            accent-color: #2563eb;
+            accent-color: #06b6d4;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(148, 163, 184, 0.2);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #06b6d4;
+            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
         }
 
         input[type="checkbox"] {
-            accent-color: #2563eb;
-        }
-
-        #map {
-            width: 100%;
-            min-height: 70vh;
-            border-radius: 1rem;
-            border: 1px solid #e2e8f0;
-            overflow: hidden;
+            accent-color: #06b6d4;
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
         }
 
         .legend {
@@ -110,22 +127,24 @@
             display: flex;
             align-items: center;
             gap: 0.6rem;
-            font-size: 0.88rem;
-            color: #475569;
+            font-size: 0.85rem;
+            color: #94a3b8;
         }
 
         .legend-swatch {
-            width: 0.85rem;
-            height: 0.85rem;
-            border-radius: 6px;
-            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.15);
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 4px;
+            flex-shrink: 0;
         }
 
         .stat-group {
             display: grid;
-            gap: 0.6rem;
-            font-size: 0.9rem;
-            color: #475569;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
         }
 
         .stat {
@@ -134,58 +153,29 @@
         }
 
         .stat strong {
-            color: #1f2937;
+            color: #f1f5f9;
         }
 
-        .glyph-marker {
-            width: 64px;
-            height: 64px;
-            padding: 6px 8px 10px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(15, 23, 42, 0.1);
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
-            display: grid;
-            grid-template-rows: auto 1fr;
-            pointer-events: none;
+        #status {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 10;
+            font-size: 0.85rem;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #94a3b8;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
         }
-
-        .glyph-bars {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            align-items: end;
-            gap: 3px;
-            height: 38px;
-        }
-
-        .glyph-bar {
-            border-radius: 999px 999px 4px 4px;
-            position: relative;
-            background: linear-gradient(180deg, rgba(14, 116, 144, 0.12), rgba(14, 165, 233, 0.12));
-        }
-
-        .glyph-bar::after {
-            content: "";
-            position: absolute;
-            inset: auto 3px 3px 3px;
-            border-radius: 999px;
-            background: currentColor;
-        }
-
-        .glyph-title {
-            font-size: 0.65rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: #1e3a8a;
-        }
-
-        /* provider-badge style removed — demo no longer uses provider badges */
 
         footer {
-            padding: 0.9rem 1.5rem 1.4rem;
-            font-size: 0.83rem;
+            position: fixed;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            font-size: 0.75rem;
             color: #64748b;
+            z-index: 5;
         }
     </style>
     <script type="importmap">
@@ -205,58 +195,57 @@
 </head>
 
 <body>
-    <header>
-        <h1>Indonesia Literacy Cartogram</h1>
-        <span id="status">Loading…</span>
-    </header>
-    <main>
+    <div id="map"></div>
+
+    <div class="overlay-controls">
         <section class="panel">
+            <h1>Indonesia Literacy Cartogram</h1>
+
             <div>
                 <h2>Explore literacy indicators</h2>
                 <p>
-                    Tween between provincial boundaries and a square grid cartogram derived from
-                    the provided row/column layout. Glyphs summarise five literacy indicators per province.
+                    Tween between provincial boundaries and a square grid cartogram.
+                    Rose charts show five literacy indicators per province.
                 </p>
             </div>
+
             <div class="slider">
                 <label for="morphFactor">Morph factor: <strong id="factorValue">0.00</strong></label>
                 <input id="morphFactor" type="range" min="0" max="1" step="0.05" value="0" />
             </div>
+
             <div class="toggle">
                 <label for="basemapEffectToggle">
                     <input id="basemapEffectToggle" type="checkbox" checked />
-                    Fade basemap in cartogram view
+                    Darken basemap
                 </label>
-                <p>
-                    Adjusts raster opacity and brightness as the grid cartogram becomes dominant.
-                </p>
             </div>
+
             <div>
-                <h3 style="margin: 0 0 0.35rem; font-size: 0.95rem;">Layer visibility</h3>
+                <h3 style="margin: 0 0 0.75rem; font-size: 0.95rem; color: #cbd5e1;">Layers</h3>
                 <div class="layer-toggles">
                     <label><input id="toggle-regular" type="checkbox" checked /> Regular geography</label>
                     <label><input id="toggle-interpolated" type="checkbox" checked /> Tween morph</label>
                     <label><input id="toggle-cartogram" type="checkbox" checked /> Grid cartogram</label>
-                    <label><input id="toggle-glyphs" type="checkbox" checked /> Literacy glyphs</label>
+                    <label><input id="toggle-glyphs" type="checkbox" checked /> Rose charts</label>
                 </div>
             </div>
+
             <div class="legend">
-                <h3 style="margin: 0; font-size: 0.95rem;">Glyph metrics</h3>
-                <ul id="glyphLegend" style="list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem;"></ul>
+                <h3 style="margin: 0 0 0.75rem; font-size: 0.95rem; color: #cbd5e1;">Metrics</h3>
+                <ul id="glyphLegend" style="list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem;"></ul>
             </div>
+
             <div class="stat-group">
                 <div class="stat"><span>Regular features</span><strong id="count-regular">–</strong></div>
                 <div class="stat"><span>Cartogram features</span><strong id="count-cartogram">–</strong></div>
             </div>
         </section>
-        <section class="panel" style="padding: 0; overflow: hidden;">
-            <div id="map"></div>
-        </section>
-    </main>
+    </div>
+
     <footer>
-        Uses data from <code>data/indonesia/indonesia_provice_boundary.geojson</code>,
-        <code>data/indonesia/indonesia-grid.csv</code>, and <code>data/indonesia/literasi_2024.csv</code>.
-        Tiles © OpenStreetMap contributors.
+        <span id="status">Loading…</span> · <a href="https://github.com/danylaksono/geo-morpher"
+            style="color: #64748b; text-decoration: none;">GeoMorpher</a>
     </footer>
     <script type="module" src="./main.js"></script>
 </body>

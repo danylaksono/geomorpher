@@ -6,4 +6,5 @@
 
 export { createMapLibreMorphLayers } from "./morphLayers.js";
 export { createMapLibreGlyphLayer } from "./glyphLayer.js";
+export { createMapLibreCustomGlyphLayer } from "./utils/customGlyphLayer.js";
 export { normalizeForMapLibre as createMapLibreMarkerData } from "../shared/markerAdapter.js";

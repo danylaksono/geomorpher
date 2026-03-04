@@ -70,6 +70,22 @@ export function normalizeRawGlyphResult({ result } = {}) {
   }
 
   if (typeof result === "object") {
+    // Check for custom canvas-based glyphs (shape, customRender)
+    if (result.shape || result.customRender) {
+      return {
+        shape: result.shape,
+        customRender: result.customRender,
+        size: result.size,
+        color: result.color,
+        fillColor: result.fillColor,
+        strokeColor: result.strokeColor,
+        strokeWidth: result.strokeWidth,
+        rotation: result.rotation,
+        label: result.label,
+        markerOptions: result.markerOptions ?? {},
+      };
+    }
+    
     if (result.icon || result.element || result.html || result.className) {
       return {
         element: result.element,

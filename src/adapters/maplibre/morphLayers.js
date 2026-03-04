@@ -66,8 +66,8 @@ const warnOnce = (() => {
 const createBasemapEffectApplier = ({ map, effect }) => {
   if (!effect) {
     return {
-      apply: () => {},
-      reset: () => {},
+      apply: () => { },
+      reset: () => { },
     };
   }
 
@@ -113,7 +113,7 @@ const createBasemapEffectApplier = ({ map, effect }) => {
   };
 
   const setPaintProperty = ({ layerId, property, value }) => {
-    if (!map.getLayer(layerId)) {
+    if (!map.style || !map.getLayer(layerId)) {
       warnOnce({ scope: "basemap", message: `layer "${layerId}" not found when applying basemap effect` });
       return;
     }
@@ -301,7 +301,7 @@ const addOrUpdateSource = ({ map, id, data }) => {
 const addLayers = ({ map, layers, beforeId }) => {
   for (const layer of layers) {
     if (!layer || !layer.id) continue;
-    if (map.getLayer(layer.id)) continue;
+    if (!map.style || map.getLayer(layer.id)) continue;
     map.addLayer(layer, beforeId ?? layer.beforeId ?? undefined);
   }
 };
@@ -405,6 +405,7 @@ export async function createMapLibreMorphLayers({
   };
 
   const setVisibility = (layerId, visibility) => {
+    if (!map.style) return;
     const layer = map.getLayer(layerId);
     if (!layer) return;
     map.setLayoutProperty(layerId, "visibility", visibility);
@@ -430,7 +431,7 @@ export async function createMapLibreMorphLayers({
   const remove = () => {
     basemapController.reset();
     for (const layerId of [layerIds.interpolated, layerIds.cartogram, layerIds.regular]) {
-      if (map.getLayer(layerId)) {
+      if (map.style && map.getLayer(layerId)) {
         map.removeLayer(layerId);
       }
     }

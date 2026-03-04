@@ -2,7 +2,7 @@ import maplibregl from "maplibre-gl";
 import {
   GeoMorpher,
   createMapLibreMorphLayers,
-  createMapLibreGlyphLayer,
+  createMapLibreCustomGlyphLayer,
   parseCSV,
   WGS84Projection,
 } from "../../../src/index.js";
@@ -66,7 +66,7 @@ const BASE_STYLE = {
       id: "background",
       type: "background",
       paint: {
-        "background-color": "#e2e8f0",
+        "background-color": "#0f172a",
       },
     },
     {
@@ -74,7 +74,9 @@ const BASE_STYLE = {
       type: "raster",
       source: "osm",
       paint: {
-        "raster-opacity": 1,
+        "raster-opacity": 0.3,
+        "raster-brightness-max": 0.7,
+        "raster-saturation": -0.5,
       },
     },
   ],
@@ -143,41 +145,81 @@ function buildLegend() {
   });
 }
 
-function createGlyphElement({ data, feature }) {
+function createRoseChartGlyph({ data, feature }) {
+  // `data` typically comes from morpher.getKeyData(), which returns an object
+  // like `{ code, population, data }`. the inner `data` holds the enriched
+  // GeoJSON feature. fallback to `feature.properties` in case we are using a
+  // custom provider or the structure is already a feature.
   if (!data) return null;
-  const properties = data.properties ?? {};
-  const featureProps = feature?.properties ?? {};
-  const provinceCode = featureProps.KODE_INISIAL || featureProps.id || "";
+  const properties =
+    // wrapped feature from getKeyData
+    data?.data?.properties ??
+    // sometimes the caller passes the feature directly
+    data?.properties ??
+    // last-resort fallback
+    feature?.properties ?? {};
 
-  const container = document.createElement("div");
-  container.className = "glyph-marker";
-  container.title = featureProps.PROVINSI || String(provinceCode);
+  return {
+    size: 48,
+    shape: "custom",
+    customRender: (ctx, x, y, size) => {
+      const radius = size / 2;
+      const centerRadius = 4;
+      const barWidth = 8;
+      const spikes = metrics.length;
+      const angleStep = (Math.PI * 2) / spikes;
 
-  const title = document.createElement("div");
-  title.className = "glyph-title";
-  title.textContent = provinceCode;
-  container.appendChild(title);
+      // Draw background circle
+      ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
 
-  const bars = document.createElement("div");
-  bars.className = "glyph-bars";
-  container.appendChild(bars);
+      // Draw grid circles
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+      ctx.lineWidth = 0.5;
+      for (let i = 1; i <= 3; i++) {
+        const r = (radius / 3) * i;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
-  metrics.forEach((metric) => {
-    const rawValue = Number(properties[metric.key] ?? 0);
-    const normalized = metric.normalize(rawValue);
-    const barHeight = Math.max(4, Math.round(normalized * 36));
+      // Draw bars for each metric
+      metrics.forEach((metric, i) => {
+        const rawValue = Number(properties[metric.key] ?? 0);
+        const normalized = metric.normalize(rawValue);
+        const barHeight = normalized * (radius - centerRadius - 2);
 
-    const bar = document.createElement("div");
-    bar.className = "glyph-bar";
-    bar.style.height = `${barHeight}px`;
-    bar.style.color = metric.color;
-    const formatted = metric.format(rawValue);
-    bar.title = `${metric.label}: ${formatted}`;
-    bar.setAttribute("aria-label", `${metric.label}: ${formatted}`);
-    bars.appendChild(bar);
-  });
+        const angle = angleStep * i - Math.PI / 2;
+        const startX = x + Math.cos(angle) * centerRadius;
+        const startY = y + Math.sin(angle) * centerRadius;
+        const endX = x + Math.cos(angle) * (centerRadius + barHeight);
+        const endY = y + Math.sin(angle) * (centerRadius + barHeight);
 
-  return container;
+        // Draw bar line
+        ctx.strokeStyle = metric.color;
+        ctx.lineWidth = barWidth;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+      });
+
+      // Draw center circle
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.beginPath();
+      ctx.arc(x, y, centerRadius + 1, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.2)";
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    },
+  };
 }
 
 function normalizeLiteracyRecords(records) {
@@ -258,31 +300,31 @@ async function bootstrap() {
         idBase: "geomorpher-indonesia",
         regularStyle: {
           paint: {
-            "fill-color": "#334155",
-            "fill-opacity": 0.28,
-            "fill-outline-color": "#0f172a",
+            "fill-color": "#06b6d4",
+            "fill-opacity": 0.25,
+            "fill-outline-color": "#0891b2",
           },
         },
         cartogramStyle: {
           paint: {
-            "fill-color": "#7c3aed",
-            "fill-opacity": 0.22,
-            "fill-outline-color": "#6d28d9",
+            "fill-color": "#8b5cf6",
+            "fill-opacity": 0.25,
+            "fill-outline-color": "#7c3aed",
           },
         },
         interpolatedStyle: {
           paint: {
-            "fill-color": "#16a34a",
-            "fill-opacity": 0.45,
-            "fill-outline-color": "#047857",
+            "fill-color": "#10b981",
+            "fill-opacity": 0.35,
+            "fill-outline-color": "#059669",
           },
         },
         basemapEffect: {
           layers: ["osm"],
           properties: {
-            "raster-opacity": [1, 0.12],
-            "raster-brightness-max": { from: 1, to: 0.88 },
-            "raster-saturation": { from: 0, to: -0.3 },
+            "raster-opacity": [0.3, 0.08],
+            "raster-brightness-max": [0.7, 0.5],
+            "raster-saturation": [-0.5, -0.8],
           },
           propertyClamp: {
             "raster-brightness-max": [0, 1],
@@ -293,42 +335,26 @@ async function bootstrap() {
         },
       });
 
-      const literacyById = literacyRecords.reduce((acc, record) => {
-        if (record && record.ID) acc.set(String(record.ID), record);
-        return acc;
-      }, new Map());
-
-      const glyphControls = await createMapLibreGlyphLayer({
+      const glyphControls = await createMapLibreCustomGlyphLayer({
         morpher,
         map,
         morphFactor: initialFactor,
         geometry: "interpolated",
-        drawGlyph: ({ feature, featureId }) => {
-          const featureCode = featureId ?? feature?.properties?.id;
-          const record = literacyById.get(String(featureCode));
-          if (!record) {
+        drawGlyph: ({ feature, featureId, data }) => {
+          // data is the enriched feature from GeoMorpher with CSV properties merged
+          if (!data) {
             return null;
           }
 
-          const element = createGlyphElement({
-            data: { properties: record },
+          return createRoseChartGlyph({
+            data,
             feature,
           });
-
-          if (!element) return null;
-
-          return {
-            element,
-            markerOptions: {
-              pitchAlignment: "map",
-              rotationAlignment: "map",
-            },
-          };
         },
-        maplibreNamespace: maplibregl,
+        glyphOptions: {
+          size: 48,
+        },
       });
-
-      // (Provider glyphs removed from demo to avoid overlaying masks)
 
       const applyLayerVisibility = () => {
         morphControls.setLayerVisibility({

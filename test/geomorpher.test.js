@@ -22,6 +22,7 @@ import {
   geoMorpher,
   createLeafletMorphLayers,
   createLeafletGlyphLayer,
+  createMapLibreGlyphLayer,
   createGridCartogramFeatureCollection,
 } from "../src/index.js";
 
@@ -332,7 +333,9 @@ test("Adapter parity: featureCollection and featureProvider produce same glyph c
     }
   };
 
-  const maplibreGlyph = await createMapLibreGlyphLayer({ morpher, map: fakeMap, drawGlyph: ({ feature }) => ({ html: `<div>${feature.properties.code}</div>` }), featureCollection: collection, maplibreNamespace: maplibreNS });
+  const maplibreGlyph = await createMapLibreGlyphLayer({ morpher, map: fakeMap, drawGlyph: ({ feature }) => ({
+    element: { nodeType: 1 } // Minimal element-like object
+  }), featureCollection: collection, maplibreNamespace: maplibreNS });
   const maplibreCount = maplibreGlyph.getState().markerCount;
 
   assert.equal(leafletCount, maplibreCount);
@@ -347,7 +350,9 @@ test("Adapter parity: featureCollection and featureProvider produce same glyph c
   };
 
   const lf2 = await createLeafletGlyphLayer({ L, drawGlyph: ({ feature }) => ({ html: `<div>${feature.properties.code}</div>` }), featureProvider: provider });
-  const ml2 = await createMapLibreGlyphLayer({ map: fakeMap, drawGlyph: ({ feature }) => ({ html: `<div>${feature.properties.code}</div>` }), featureProvider: provider, maplibreNamespace: maplibreNS });
+  const ml2 = await createMapLibreGlyphLayer({ map: fakeMap, drawGlyph: ({ feature }) => ({
+    element: { nodeType: 1 }
+  }), featureProvider: provider, maplibreNamespace: maplibreNS });
 
   // initial 0 factor
   const lfState0 = lf2.updateGlyphs({ morphFactor: 0 });
