@@ -7,20 +7,16 @@ GeoJSON morphing utilities for animating between regular geography and cartogram
 
 ![](demo.gif)
 
-
-## Status
-
-This library is currently in early-stage development (v0.1.1) and has recently completed a migration to a MapLibre-first adapter. The core morphing engine is stable, but the MapLibre adapter is new and under active development. Leaflet compatibility is maintained. Community feedback and contributions are welcome.
+To quickly create a grid cartogram, checkout my other library: ![https://danylaksono.is-a.dev/gridmapper/example/](https://danylaksono.is-a.dev/gridmapper/example/).
 
 
 ## Features
 
-- **Projection Agnostic**: Auto-detects WGS84 (lat/lng) data; defaults to OSGB (British National Grid) for UK data but supports any CRS via `proj4`.
 - **MapLibre & Leaflet Adapters**: High-performance MapLibre-first implementation with Leaflet compatibility helpers.
 - **Generic Morphing Engine**: Smoothly interpolates between any two aligned GeoJSON geometries using `flubber`.
 - **Multivariate Glyphs**: Highly customizable DOM/SVG/Canvas overlays (charts, icons, sparklines) that stay synced with morphing geometry.
 - **Basemap Effects**: Synchronized fading, blurring, or grayscale effects for basemap layers during transitions.
-- **Cartogram Utilities**: Built-in support for converting grid/waffle cartogram records into GeoJSON.
+- **Projection Agnostic**: Auto-detects WGS84 (lat/lng) data; defaults to OSGB (British National Grid) for UK data but supports any CRS via `proj4`.
 
 
 ## Installation
@@ -32,19 +28,6 @@ npm install geo-morpher
 Leaflet is provided as a peer dependency—bring your own Leaflet instance when using the compatibility helpers. MapLibre remains the default adapter and is bundled as a dependency for out-of-the-box usage; if your build already supplies `maplibre-gl`, mark it as external to avoid duplicating the library.
 
 ## Usage
-
-Project structure highlights:
-
-```text
-src/
-  core/            # GeoMorpher core engine
-  adapters/        # Integration helpers (Leaflet, etc.)
-  lib/             # Shared runtime utilities (OSGB projection)
-  utils/           # Data enrichment and projection helpers
-data/              # Sample Oxford LSOA datasets
-examples/          # Runnable browser demos (MapLibre & Leaflet)
-test/              # node:test coverage for core behaviours
-```
 
 ### MapLibre adapter (default)
 
@@ -501,6 +484,10 @@ Run the bundled smoke tests with:
 ```bash
 npm test
 ```
+
+## Author
+
+Dany Laksono
 
 ## License
 

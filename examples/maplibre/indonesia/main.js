@@ -97,6 +97,108 @@ const cartogramToggle = document.getElementById("toggle-cartogram");
 const glyphToggle = document.getElementById("toggle-glyphs");
 let hasBootstrapped = false;
 
+// comparison mode state --------------------------------------------------
+// when a province/glyph is clicked we compute an outline drawing function
+// for that province's glyph shape; the function is invoked during glyph
+// rendering to project the white outline across every glyph on the canvas.
+let comparisonOutlineDraw = null;
+// last selected properties (used for hover comparisons)
+let selectedComparisonProperties = null;
+// will be populated after the glyph layer is created
+let glyphControls;
+// store the most recent hovered props so we can rebuild tooltip on selection change
+let lastHoveredProps = null;
+
+function createComparisonOutline(properties) {
+  // compute normalized lengths once; the returned function will scale them
+  // appropriately for whatever glyph size is being drawn
+  const normalizedLens = metrics.map((m) => {
+    const rawValue = Number(properties[m.key] ?? 0);
+    return m.normalize(rawValue);
+  });
+
+  return (ctx, x, y, size) => {
+    const radius = size / 2 - 4;
+    const centerRadius = 3;
+    const angleStep = (Math.PI * 2) / metrics.length;
+
+    ctx.save();
+    ctx.beginPath();
+    normalizedLens.forEach((norm, i) => {
+      const petalLength = 2 + norm * (radius - centerRadius - 2);
+      const angle = angleStep * i - Math.PI / 2;
+      const sx = Math.cos(angle) * (centerRadius + petalLength);
+      const sy = Math.sin(angle) * (centerRadius + petalLength);
+      if (i === 0) {
+        ctx.moveTo(x + sx, y + sy);
+      } else {
+        ctx.lineTo(x + sx, y + sy);
+      }
+    });
+    ctx.closePath();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  };
+}
+
+
+// helper to build tooltip html given hovered and optionally selected props
+function buildTooltipHTML(hoverProps, selectedProps) {
+  if (!hoverProps) return "";
+  const buildRows = (props, includeRight = false) =>
+    metrics
+      .map(
+        (m) => {
+          const left = m.format(props[m.key]);
+          const right = includeRight && selectedProps ? m.format(selectedProps[m.key]) : "";
+          if (includeRight) {
+            return `
+                  <div class="tooltip-row comparison-row">
+                    <span class="tooltip-label">${m.label}</span>
+                    <span class="tooltip-value" style="color:${m.color}">${left}</span>
+                    <span class="tooltip-value right" style="color:${m.color}">${right}</span>
+                  </div>
+                `;
+          }
+          return `
+                  <div class="tooltip-row">
+                    <span class="tooltip-label">${m.label}</span>
+                    <span class="tooltip-value" style="color:${m.color}">${left}</span>
+                  </div>
+                `;
+        }
+      )
+      .join("");
+
+  if (selectedProps) {
+    const header = `<div class="tooltip-header comparison"><span>${hoverProps.PROVINSI}</span><span>${selectedProps.PROVINSI}</span></div>`;
+    const rows = buildRows(hoverProps, true);
+    return header + rows;
+  }
+
+  return `<div class="tooltip-header">${hoverProps.PROVINSI}</div>` + buildRows(hoverProps);
+}
+
+function updateComparisonSelection(props) {
+  selectedComparisonProperties = props || null;
+  if (props) {
+    comparisonOutlineDraw = createComparisonOutline(props);
+  } else {
+    comparisonOutlineDraw = null;
+  }
+  if (glyphControls) {
+    // force all glyphs to redraw with new outline state
+    glyphControls.updateGlyphs({});
+  }
+  // if we are currently displaying a tooltip, refresh its content
+  if (tooltipEl && lastHoveredProps) {
+    tooltipEl.innerHTML = buildTooltipHTML(lastHoveredProps, selectedComparisonProperties);
+  }
+}
+
+
 function hideTooltip(map) {
   if (tooltipEl) {
     tooltipEl.style.display = "none";
@@ -226,6 +328,11 @@ function createRoseChartGlyph({ data, feature }) {
       ctx.arc(x, y, centerRadius, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+
+      // if a comparison glyph is selected, draw its outline
+      if (typeof comparisonOutlineDraw === "function") {
+        comparisonOutlineDraw(ctx, x, y, size);
+      }
     },
   };
 }
@@ -396,7 +503,7 @@ async function bootstrap() {
         },
       });
 
-      const glyphControls = await createMapLibreCustomGlyphLayer({
+      glyphControls = await createMapLibreCustomGlyphLayer({
         morpher,
         map,
         morphFactor: initialFactor,
@@ -462,17 +569,8 @@ async function bootstrap() {
 
           if (data && tooltipEl) {
             const props = data.data.properties;
-            let rows = metrics.map(m => `
-              <div class="tooltip-row">
-                <span class="tooltip-label">${m.label}</span>
-                <span class="tooltip-value" style="color:${m.color}">${m.format(props[m.key])}</span>
-              </div>
-            `).join("");
-
-            tooltipEl.innerHTML = `
-              <div class="tooltip-header">${props.PROVINSI}</div>
-              ${rows}
-            `;
+            lastHoveredProps = props;
+            tooltipEl.innerHTML = buildTooltipHTML(props, selectedComparisonProperties);
             tooltipEl.style.display = "block";
             tooltipEl.style.left = `${e.originalEvent.pageX + 15}px`;
             tooltipEl.style.top = `${e.originalEvent.pageY + 15}px`;
@@ -503,6 +601,29 @@ async function bootstrap() {
       map.on("mouseleave", morphControls.layerIds.interpolated, hideTooltip);
       map.on("movestart", hideTooltip);
       map.on("zoomstart", hideTooltip);
+
+      // comparison mode click handler
+      map.on("click", (e) => {
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: [
+            morphControls.layerIds.interpolated,
+            morphControls.layerIds.regular,
+            morphControls.layerIds.cartogram,
+          ].filter((id) => map.getLayer(id)),
+        });
+
+        if (features.length > 0) {
+          const feat = features[0];
+          const id = feat.properties.id || feat.properties.ID;
+          const data = morpher.getKeyData()[id];
+          if (data && data.data && data.data.properties) {
+            updateComparisonSelection(data.data.properties);
+            return;
+          }
+        }
+        // clicked outside any province -> clear selection
+        updateComparisonSelection(null);
+      });
 
       applyLayerVisibility();
 

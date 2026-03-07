@@ -168,6 +168,27 @@
             margin-bottom: 0.35rem;
         }
 
+        /* comparison mode adjustments */
+        .tooltip-header.comparison {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .tooltip-header.comparison span {
+            width: 48%;
+        }
+
+        .tooltip-row.comparison-row {
+            display: grid;
+            grid-template-columns: auto 1fr 1fr;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .tooltip-row.comparison-row .tooltip-value.right {
+            text-align: right;
+        }
+
         .tooltip-label {
             color: #94a3b8;
         }
