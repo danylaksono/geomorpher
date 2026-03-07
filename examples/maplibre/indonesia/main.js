@@ -331,24 +331,44 @@ async function bootstrap() {
           paint: {
             "fill-color": "#1e293b",
             "fill-opacity": 0.4,
-            "fill-outline-color": "rgba(255,255,255,0.1)",
+            "fill-outline-color": "rgba(255,255,255,0.2)",
           },
         },
         cartogramStyle: {
           paint: {
             "fill-color": "#1e293b",
             "fill-opacity": 0.4,
-            "fill-outline-color": "rgba(255,255,255,0.1)",
+            "fill-outline-color": "rgba(255,255,255,0.2)",
           },
         },
         interpolatedStyle: {
           paint: {
-            "fill-color": "#3b82f6",
-            "fill-opacity": 0.15,
-            "fill-outline-color": "rgba(59, 130, 246, 0.5)",
+            "fill-color": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              "#60a5fa",
+              "#3b82f6"
+            ],
+            "fill-opacity": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.4,
+              0.15
+            ],
+            "fill-outline-color": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              "#ffffff",
+              "rgba(255, 255, 255, 0.4)"
+            ],
           },
         },
       });
+
+      // Update OSM opacity based on initial factor
+      map.setPaintProperty("osm", "raster-opacity", 0.2 * (1 - initialFactor));
+
+      let hoveredStateId = null;
 
       // Add province labels layer
       map.addSource("province-labels", {
@@ -423,6 +443,19 @@ async function bootstrap() {
 
         if (features.length > 0) {
           const feature = features[0];
+          
+          if (hoveredStateId !== null) {
+            map.setFeatureState(
+              { source: morphControls.sourceIds.interpolated, id: hoveredStateId },
+              { hover: false }
+            );
+          }
+          hoveredStateId = feature.id;
+          map.setFeatureState(
+            { source: morphControls.sourceIds.interpolated, id: hoveredStateId },
+            { hover: true }
+          );
+
           // Use featureId or properties.id to join with morpher data
           const id = feature.properties.id || feature.properties.ID;
           const data = morpher.getKeyData()[id];
@@ -450,10 +483,26 @@ async function bootstrap() {
         }
       };
 
+      const hideTooltip = () => {
+        if (tooltipEl) {
+          tooltipEl.style.display = "none";
+        }
+        if (map?.getCanvas) {
+          map.getCanvas().style.cursor = "";
+        }
+        if (hoveredStateId !== null) {
+          map.setFeatureState(
+            { source: morphControls.sourceIds.interpolated, id: hoveredStateId },
+            { hover: false }
+          );
+          hoveredStateId = null;
+        }
+      };
+
       map.on("mousemove", handleMouseMove);
-      map.on("mouseleave", morphControls.layerIds.interpolated, () => hideTooltip(map));
-      map.on("movestart", () => hideTooltip(map));
-      map.on("zoomstart", () => hideTooltip(map));
+      map.on("mouseleave", morphControls.layerIds.interpolated, hideTooltip);
+      map.on("movestart", hideTooltip);
+      map.on("zoomstart", hideTooltip);
 
       applyLayerVisibility();
 
@@ -470,6 +519,9 @@ async function bootstrap() {
         factorValue.textContent = value.toFixed(2);
         morphControls.updateMorphFactor(value);
         
+        // Update OSM opacity
+        map.setPaintProperty("osm", "raster-opacity", 0.2 * (1 - value));
+
         // Update labels
         const source = map.getSource("province-labels");
         if (source) {
