@@ -92,8 +92,15 @@ export async function createMapLibreCustomGlyphLayer({
   const resizeCanvas = () => {
     const rect = container.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    const targetWidth = rect.width * dpr;
+    const targetHeight = rect.height * dpr;
+
+    if (canvas.width === targetWidth && canvas.height === targetHeight) {
+      return;
+    }
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
     canvas.style.width = `${rect.width}px`;
     canvas.style.height = `${rect.height}px`;
     // Reset canvas context state and scale for HiDPI displays
@@ -214,13 +221,32 @@ export async function createMapLibreCustomGlyphLayer({
   };
 
   const render = () => {
-    // Clear canvas with transparent background
-    context.clearRect(0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+    if (!canvas.width || !canvas.height) return;
+
+    // Save context state to preserve DPR scaling
+    context.save();
+    
+    // Reset transform to identity to clear the entire physical canvas reliably
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Restore context state (including DPR scale)
+    context.restore();
 
     // Render each glyph
     glyphs.forEach(({ lngLat, glyph, featureId }) => {
       // Project geographic coordinates to pixel coordinates
       const pixelPos = map.project(lngLat);
+
+      // Skip if off-canvas
+      if (
+        pixelPos.x < -100 || 
+        pixelPos.y < -100 || 
+        pixelPos.x > canvas.width / (window.devicePixelRatio || 1) + 100 || 
+        pixelPos.y > canvas.height / (window.devicePixelRatio || 1) + 100
+      ) {
+        return;
+      }
 
       renderGlyph({
         context,
@@ -255,6 +281,15 @@ export async function createMapLibreCustomGlyphLayer({
 
   // Handle map events for re-rendering
   const handleMapEvent = () => {
+    // Force immediate clear before any potential async behavior or slow resize
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.restore();
+
+    // Check if the canvas size needs updating due to container resize
+    // We do this here as well to catch resizes that might not fire window.resize
+    resizeCanvas();
     render();
   };
 

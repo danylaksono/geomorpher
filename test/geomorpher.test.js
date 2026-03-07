@@ -12,6 +12,16 @@ const loadJSON = async (relativePath) => {
   return JSON.parse(raw);
 };
 
+const distanceBetween = (a, b) => {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length < 2 || b.length < 2) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const dx = a[0] - b[0];
+  const dy = a[1] - b[1];
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
 const [regularGeoJSON, cartogramGeoJSON] = await Promise.all([
   loadJSON("data/oxford_lsoas_regular.json"),
   loadJSON("data/oxford_lsoas_cartogram.json"),
@@ -67,6 +77,63 @@ test("GeoMorpher prepares enriched collections", async () => {
   assert.equal(regular.features.length, regularGeoJSON.features.length);
   assert.equal(cartogram.features.length, cartogramGeoJSON.features.length);
   assert.ok(Object.keys(morpher.getKeyData()).length > 0);
+});
+
+test("GeoMorpher interpolates stable anchors for multipolygons near factor 1", async () => {
+  const syntheticRegular = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { id: "archipelago" },
+        geometry: {
+          type: "MultiPolygon",
+          coordinates: [
+            [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]],
+            [[[10, 0], [12, 0], [12, 2], [10, 2], [10, 0]]],
+          ],
+        },
+      },
+    ],
+  };
+
+  const syntheticCartogram = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { id: "archipelago" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [[[20, 0], [22, 0], [22, 2], [20, 2], [20, 0]]],
+        },
+      },
+    ],
+  };
+
+  const morpher = new GeoMorpher({
+    regularGeoJSON: syntheticRegular,
+    cartogramGeoJSON: syntheticCartogram,
+    joinColumn: "id",
+    geoJSONJoinColumn: "id",
+    normalize: false,
+  });
+
+  await morpher.prepare();
+
+  const regularFeature = morpher.getRegularFeatureCollection().features[0];
+  const cartogramFeature = morpher.getCartogramFeatureCollection().features[0];
+  const nearEndFeature = morpher.getInterpolatedFeatureCollection(0.999).features[0];
+  const endFeature = morpher.getInterpolatedFeatureCollection(1).features[0];
+
+  const expectedNearEnd = [
+    regularFeature.centroid[0] + (cartogramFeature.centroid[0] - regularFeature.centroid[0]) * 0.999,
+    regularFeature.centroid[1] + (cartogramFeature.centroid[1] - regularFeature.centroid[1]) * 0.999,
+  ];
+
+  assert.deepEqual(endFeature.centroid, cartogramFeature.centroid);
+  assert.ok(distanceBetween(nearEndFeature.centroid, expectedNearEnd) < 1e-9);
+  assert.ok(distanceBetween(nearEndFeature.centroid, endFeature.centroid) < 0.02);
 });
 
 test("geoMorpher legacy wrapper returns structured result", async () => {

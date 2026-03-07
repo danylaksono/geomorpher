@@ -6,6 +6,7 @@ import * as turf from "@turf/turf";
 import { enrichGeoData, createLookup } from "../utils/enrichment.js";
 import { toWGS84FeatureCollection } from "../utils/projection.js";
 import { normalizeCartogramInput } from "../utils/cartogram.js";
+import { isLikelyWGS84, WGS84Projection } from "../utils/projections.js";
 
 const clampFactor = (value) => {
   if (!Number.isFinite(value)) return 0;
@@ -13,6 +14,13 @@ const clampFactor = (value) => {
   if (value >= 1) return 1;
   return value;
 };
+
+const isFiniteCoordinatePair = (value) => (
+  Array.isArray(value)
+  && value.length >= 2
+  && Number.isFinite(value[0])
+  && Number.isFinite(value[1])
+);
 
 const RING_VISIBILITY_EPSILON = 1e-3;
 const PLACEHOLDER_SCALE = 0.02;
@@ -251,12 +259,77 @@ const createGeometryInterpolator = ({ fromGeometry, toGeometry }) => {
   };
 };
 
-function withCentroid(feature) {
-  const centroid = turf.centroid(feature);
+function withCentroid(feature, preferredCentroid = null) {
+  const centroid = isFiniteCoordinatePair(preferredCentroid)
+    ? preferredCentroid
+    : isFiniteCoordinatePair(feature?.centroid)
+      ? feature.centroid
+      : resolveFeatureAnchor(feature);
+
+  if (!isFiniteCoordinatePair(centroid)) {
+    return { ...feature };
+  }
+
   return {
     ...feature,
-    centroid: turf.getCoord(centroid),
+    centroid,
   };
+}
+
+function resolveFeatureAnchor(feature) {
+  if (!feature?.geometry) return null;
+
+  const geometryType = feature.geometry.type;
+  const isPolygonal = geometryType === "Polygon" || geometryType === "MultiPolygon";
+
+  if (isPolygonal) {
+    try {
+      const centerOfMass = turf.centerOfMass(feature);
+      const coordinate = turf.getCoord(centerOfMass);
+      if (isFiniteCoordinatePair(coordinate) && turf.booleanPointInPolygon(centerOfMass, feature)) {
+        return coordinate;
+      }
+    } catch {
+      // Fall through to the next anchor strategy.
+    }
+
+    try {
+      const pointOnFeature = turf.pointOnFeature(feature);
+      const coordinate = turf.getCoord(pointOnFeature);
+      if (isFiniteCoordinatePair(coordinate)) {
+        return coordinate;
+      }
+    } catch {
+      // Fall through to centroid.
+    }
+  }
+
+  try {
+    const centroid = turf.centroid(feature);
+    const coordinate = turf.getCoord(centroid);
+    if (isFiniteCoordinatePair(coordinate)) {
+      return coordinate;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function interpolateCentroid(fromCentroid, toCentroid, factor) {
+  const from = isFiniteCoordinatePair(fromCentroid) ? fromCentroid : null;
+  const to = isFiniteCoordinatePair(toCentroid) ? toCentroid : null;
+
+  if (from && to) {
+    const clamped = clampFactor(factor);
+    return [
+      from[0] + (to[0] - from[0]) * clamped,
+      from[1] + (to[1] - from[1]) * clamped,
+    ];
+  }
+
+  return to ?? from ?? null;
 }
 
 export class GeoMorpher {
@@ -281,6 +354,12 @@ export class GeoMorpher {
     this.aggregations = aggregations;
     this.normalize = normalize;
     this.projection = projection;
+
+    // Auto-detect WGS84 if no projection is provided
+    if (!this.projection && isLikelyWGS84(this.regularGeoJSON) === "WGS84") {
+      this.projection = WGS84Projection;
+    }
+
     this.cartogramGridOptions = cartogramGridOptions ?? {};
 
     this._normalizedCartogramGeoJSON = null;
@@ -436,14 +515,16 @@ export class GeoMorpher {
 
   getInterpolatedFeatureCollection(factor = 0.5) {
     this.assertPrepared();
+    const clampedFactor = clampFactor(factor);
     const features = [];
 
     for (const [code, entry] of Object.entries(this.state.interpolators)) {
       if (!entry || typeof entry.interpolate !== "function") continue;
       const baseFeature = this.state.geographyLookup[code];
+      const cartogramFeature = this.state.cartogramLookup[code];
       if (!baseFeature) continue;
 
-      const coordinates = entry.interpolate(factor);
+      const coordinates = entry.interpolate(clampedFactor);
 
       if (!coordinates || !Array.isArray(coordinates) || !coordinates.length) continue;
 
@@ -451,18 +532,24 @@ export class GeoMorpher {
         ? { type: "MultiPolygon", coordinates }
         : { type: "Polygon", coordinates };
 
-      features.push({
+      const centroid = interpolateCentroid(
+        baseFeature.centroid,
+        cartogramFeature?.centroid ?? baseFeature.centroid,
+        clampedFactor
+      );
+
+      features.push(withCentroid({
         type: "Feature",
         properties: {
           ...baseFeature.properties,
           code,
-          morph_factor: factor,
+          morph_factor: clampedFactor,
         },
         geometry,
-      });
+      }, centroid));
     }
 
-    return turf.featureCollection(features.map(withCentroid));
+    return turf.featureCollection(features);
   }
 
   getInterpolatedLookup(factor = 0.5) {

@@ -12,36 +12,31 @@ const metrics = [
   {
     key: "Indeks Pembangunan Literasi Masyarakat",
     label: "Literacy Index",
-    color: "#2563eb",
-    normalize: (value) => clamp(value / 100),
+    color: "#3b82f6", // Vibrant Blue
     format: (value) => `${value.toFixed(2)} pts`,
   },
   {
     key: "Pemerataan Layanan Perpustakaan",
     label: "Library Access",
-    color: "#0ea5e9",
-    normalize: (value) => clamp(value),
+    color: "#06b6d4", // Cyan
     format: (value) => `${(value * 100).toFixed(1)}%`,
   },
   {
     key: "Ketercukupan Koleksi Perpustakaan",
     label: "Collection Sufficiency",
-    color: "#f59e0b",
-    normalize: (value) => clamp(value),
+    color: "#f59e0b", // Amber
     format: (value) => `${(value * 100).toFixed(1)}%`,
   },
   {
     key: "Rasio Ketercukupan Tenaga Perpustakaan",
     label: "Staff Adequacy",
-    color: "#ef4444",
-    normalize: (value) => clamp(value),
+    color: "#ef4444", // Red
     format: (value) => `${(value * 100).toFixed(1)}%`,
   },
   {
     key: "Tingkat Kunjungan Masyarakat per hari",
     label: "Daily Visits",
-    color: "#8b5cf6",
-    normalize: (value) => clamp(value),
+    color: "#a855f7", // Purple
     format: (value) => `${(value * 100).toFixed(1)}%`,
   },
 ];
@@ -52,6 +47,7 @@ const BASE_STYLE = {
   metadata: {
     "geo-morpher": "maplibre-demo-indonesia",
   },
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   sources: {
     osm: {
       type: "raster",
@@ -66,7 +62,7 @@ const BASE_STYLE = {
       id: "background",
       type: "background",
       paint: {
-        "background-color": "#0f172a",
+        "background-color": "#020617",
       },
     },
     {
@@ -74,9 +70,9 @@ const BASE_STYLE = {
       type: "raster",
       source: "osm",
       paint: {
-        "raster-opacity": 0.3,
-        "raster-brightness-max": 0.7,
-        "raster-saturation": -0.5,
+        "raster-opacity": 0.2,
+        "raster-brightness-max": 0.6,
+        "raster-saturation": -0.7,
       },
     },
   ],
@@ -90,17 +86,26 @@ const clamp = (value, min = 0, max = 1) => {
   return numeric;
 };
 
+const tooltipEl = document.getElementById("tooltip");
 const statusEl = document.getElementById("status");
 const slider = document.getElementById("morphFactor");
 const factorValue = document.getElementById("factorValue");
-const basemapToggle = document.getElementById("basemapEffectToggle");
-const regularCountEl = document.getElementById("count-regular");
-const cartogramCountEl = document.getElementById("count-cartogram");
 const glyphLegendEl = document.getElementById("glyphLegend");
 const regularToggle = document.getElementById("toggle-regular");
 const interpolatedToggle = document.getElementById("toggle-interpolated");
 const cartogramToggle = document.getElementById("toggle-cartogram");
 const glyphToggle = document.getElementById("toggle-glyphs");
+let hasBootstrapped = false;
+
+function hideTooltip(map) {
+  if (tooltipEl) {
+    tooltipEl.style.display = "none";
+  }
+
+  if (map?.getCanvas) {
+    map.getCanvas().style.cursor = "";
+  }
+}
 
 async function fetchJSON(fileName) {
   const response = await fetch(new URL(`../../../data/${fileName}`, import.meta.url));
@@ -146,84 +151,103 @@ function buildLegend() {
 }
 
 function createRoseChartGlyph({ data, feature }) {
-  // `data` typically comes from morpher.getKeyData(), which returns an object
-  // like `{ code, population, data }`. the inner `data` holds the enriched
-  // GeoJSON feature. fallback to `feature.properties` in case we are using a
-  // custom provider or the structure is already a feature.
   if (!data) return null;
   const properties =
-    // wrapped feature from getKeyData
     data?.data?.properties ??
-    // sometimes the caller passes the feature directly
     data?.properties ??
-    // last-resort fallback
     feature?.properties ?? {};
 
   return {
-    size: 48,
+    size: 72,
     shape: "custom",
     customRender: (ctx, x, y, size) => {
-      const radius = size / 2;
-      const centerRadius = 4;
-      const barWidth = 8;
+      const radius = size / 2 - 4;
+      const centerRadius = 3;
       const spikes = metrics.length;
       const angleStep = (Math.PI * 2) / spikes;
 
+      // Drop shadow for the whole glyph
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+      ctx.shadowOffsetY = 2;
+
       // Draw background circle
-      ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
       ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.arc(x, y, radius + 2, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
 
       // Draw grid circles
       ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
       ctx.lineWidth = 0.5;
-      for (let i = 1; i <= 3; i++) {
-        const r = (radius / 3) * i;
+      [0.25, 0.5, 0.75, 1.0].forEach(p => {
+        const r = centerRadius + p * (radius - centerRadius);
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.stroke();
-      }
+      });
 
-      // Draw bars for each metric
+      // Draw petals
       metrics.forEach((metric, i) => {
         const rawValue = Number(properties[metric.key] ?? 0);
         const normalized = metric.normalize(rawValue);
-        const barHeight = normalized * (radius - centerRadius - 2);
+        const petalLength = 2 + normalized * (radius - centerRadius - 2);
 
-        const angle = angleStep * i - Math.PI / 2;
-        const startX = x + Math.cos(angle) * centerRadius;
-        const startY = y + Math.sin(angle) * centerRadius;
-        const endX = x + Math.cos(angle) * (centerRadius + barHeight);
-        const endY = y + Math.sin(angle) * (centerRadius + barHeight);
+        const startAngle = angleStep * i - Math.PI / 2 - angleStep / 2 + 0.08;
+        const endAngle = angleStep * i - Math.PI / 2 + angleStep / 2 - 0.08;
 
-        // Draw bar line
-        ctx.strokeStyle = metric.color;
-        ctx.lineWidth = barWidth;
-        ctx.lineCap = "round";
+        // Petal shape
+        ctx.save();
+        ctx.fillStyle = metric.color;
+        ctx.globalAlpha = 0.8;
         ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
+        ctx.moveTo(x + Math.cos(startAngle) * centerRadius, y + Math.sin(startAngle) * centerRadius);
+        ctx.arc(x, y, centerRadius + petalLength, startAngle, endAngle);
+        ctx.lineTo(x + Math.cos(endAngle) * centerRadius, y + Math.sin(endAngle) * centerRadius);
+        ctx.closePath();
+        ctx.fill();
+
+        // Highlighting edge
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 1;
         ctx.stroke();
+        ctx.restore();
       });
 
-      // Draw center circle
-      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      // Draw center circle with glow
+      ctx.save();
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+      ctx.fillStyle = "#fff";
       ctx.beginPath();
-      ctx.arc(x, y, centerRadius + 1, 0, Math.PI * 2);
+      ctx.arc(x, y, centerRadius, 0, Math.PI * 2);
       ctx.fill();
-
-      ctx.strokeStyle = "rgba(15, 23, 42, 0.2)";
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.restore();
     },
   };
 }
 
 function normalizeLiteracyRecords(records) {
   const numericKeys = new Set(metrics.map((metric) => metric.key));
+  
+  // First pass: find min/max for each metric
+  metrics.forEach(metric => {
+    const values = records.map(r => Number(r[metric.key])).filter(v => !isNaN(v));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    
+    // We want a bit of padding so the smallest isn't zero length
+    metric.normalize = (val) => {
+      const v = Number(val);
+      if (isNaN(v)) return 0;
+      if (max === min) return 0.5;
+      return clamp((v - min) / (max - min));
+    };
+  });
+
   return records.map((record) => {
     const normalized = { ...record };
     numericKeys.forEach((key) => {
@@ -237,6 +261,11 @@ function normalizeLiteracyRecords(records) {
 }
 
 async function bootstrap() {
+  if (hasBootstrapped) {
+    return;
+  }
+  hasBootstrapped = true;
+
   try {
     statusEl.textContent = "Loading data…";
 
@@ -300,38 +329,50 @@ async function bootstrap() {
         idBase: "geomorpher-indonesia",
         regularStyle: {
           paint: {
-            "fill-color": "#06b6d4",
-            "fill-opacity": 0.25,
-            "fill-outline-color": "#0891b2",
+            "fill-color": "#1e293b",
+            "fill-opacity": 0.4,
+            "fill-outline-color": "rgba(255,255,255,0.1)",
           },
         },
         cartogramStyle: {
           paint: {
-            "fill-color": "#8b5cf6",
-            "fill-opacity": 0.25,
-            "fill-outline-color": "#7c3aed",
+            "fill-color": "#1e293b",
+            "fill-opacity": 0.4,
+            "fill-outline-color": "rgba(255,255,255,0.1)",
           },
         },
         interpolatedStyle: {
           paint: {
-            "fill-color": "#10b981",
-            "fill-opacity": 0.35,
-            "fill-outline-color": "#059669",
+            "fill-color": "#3b82f6",
+            "fill-opacity": 0.15,
+            "fill-outline-color": "rgba(59, 130, 246, 0.5)",
           },
         },
-        basemapEffect: {
-          layers: ["osm"],
-          properties: {
-            "raster-opacity": [0.3, 0.08],
-            "raster-brightness-max": [0.7, 0.5],
-            "raster-saturation": [-0.5, -0.8],
-          },
-          propertyClamp: {
-            "raster-brightness-max": [0, 1],
-            "raster-opacity": [0, 1],
-          },
-          easing: (t) => t * t,
-          isEnabled: () => (basemapToggle ? basemapToggle.checked : true),
+      });
+
+      // Add province labels layer
+      map.addSource("province-labels", {
+        type: "geojson",
+        data: morpher.getInterpolatedFeatureCollection(initialFactor),
+      });
+
+      map.addLayer({
+        id: "province-labels-layer",
+        type: "symbol",
+        source: "province-labels",
+        layout: {
+          "text-field": ["get", "PROVINSI"],
+          "text-font": ["Open Sans Regular"],
+          "text-size": 10,
+          "text-offset": [0, 2.5],
+          "text-anchor": "top",
+          "text-transform": "uppercase",
+          "text-letter-spacing": 0.1,
+        },
+        paint: {
+          "text-color": "#94a3b8",
+          "text-halo-color": "rgba(2, 6, 23, 0.8)",
+          "text-halo-width": 1,
         },
       });
 
@@ -341,27 +382,27 @@ async function bootstrap() {
         morphFactor: initialFactor,
         geometry: "interpolated",
         drawGlyph: ({ feature, featureId, data }) => {
-          // data is the enriched feature from GeoMorpher with CSV properties merged
-          if (!data) {
-            return null;
-          }
-
-          return createRoseChartGlyph({
-            data,
-            feature,
-          });
+          if (!data) return null;
+          return createRoseChartGlyph({ data, feature });
         },
         glyphOptions: {
-          size: 48,
+          size: 72,
         },
       });
 
       const applyLayerVisibility = () => {
-        morphControls.setLayerVisibility({
-          regular: regularToggle ? regularToggle.checked : true,
-          cartogram: cartogramToggle ? cartogramToggle.checked : true,
+        const vis = {
+          regular: regularToggle ? regularToggle.checked : false,
+          cartogram: cartogramToggle ? cartogramToggle.checked : false,
           interpolated: interpolatedToggle ? interpolatedToggle.checked : true,
-        });
+        };
+        morphControls.setLayerVisibility(vis);
+        
+        map.setLayoutProperty(
+          "province-labels-layer",
+          "visibility",
+          vis.interpolated ? "visible" : "none"
+        );
 
         if (glyphToggle && !glyphToggle.checked) {
           glyphControls.clear();
@@ -370,14 +411,55 @@ async function bootstrap() {
         }
       };
 
+      // Hover handling
+      const handleMouseMove = (e) => {
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: [
+            morphControls.layerIds.interpolated,
+            morphControls.layerIds.regular,
+            morphControls.layerIds.cartogram
+          ].filter(id => map.getLayer(id))
+        });
+
+        if (features.length > 0) {
+          const feature = features[0];
+          // Use featureId or properties.id to join with morpher data
+          const id = feature.properties.id || feature.properties.ID;
+          const data = morpher.getKeyData()[id];
+
+          if (data && tooltipEl) {
+            const props = data.data.properties;
+            let rows = metrics.map(m => `
+              <div class="tooltip-row">
+                <span class="tooltip-label">${m.label}</span>
+                <span class="tooltip-value" style="color:${m.color}">${m.format(props[m.key])}</span>
+              </div>
+            `).join("");
+
+            tooltipEl.innerHTML = `
+              <div class="tooltip-header">${props.PROVINSI}</div>
+              ${rows}
+            `;
+            tooltipEl.style.display = "block";
+            tooltipEl.style.left = `${e.originalEvent.pageX + 15}px`;
+            tooltipEl.style.top = `${e.originalEvent.pageY + 15}px`;
+            map.getCanvas().style.cursor = "pointer";
+          }
+        } else {
+          hideTooltip(map);
+        }
+      };
+
+      map.on("mousemove", handleMouseMove);
+      map.on("mouseleave", morphControls.layerIds.interpolated, () => hideTooltip(map));
+      map.on("movestart", () => hideTooltip(map));
+      map.on("zoomstart", () => hideTooltip(map));
+
       applyLayerVisibility();
 
       [regularToggle, cartogramToggle, interpolatedToggle, glyphToggle]
         .filter(Boolean)
         .forEach((input) => input.addEventListener("change", applyLayerVisibility));
-
-      regularCountEl.textContent = morpher.getRegularFeatureCollection().features.length.toString();
-      cartogramCountEl.textContent = morpher.getCartogramFeatureCollection().features.length.toString();
 
       if (bounds && typeof bounds.isEmpty === "function" && !bounds.isEmpty()) {
         map.fitBounds(bounds, { padding: 48, linear: true, duration: 0 });
@@ -387,22 +469,24 @@ async function bootstrap() {
         const value = Number(event.target.value);
         factorValue.textContent = value.toFixed(2);
         morphControls.updateMorphFactor(value);
+        
+        // Update labels
+        const source = map.getSource("province-labels");
+        if (source) {
+          source.setData(morpher.getInterpolatedFeatureCollection(value));
+        }
+
         if (!glyphToggle || glyphToggle.checked) {
           glyphControls.updateGlyphs({ morphFactor: value });
         }
       });
-
-      if (basemapToggle) {
-        basemapToggle.addEventListener("change", () => {
-          morphControls.updateMorphFactor(Number(slider.value));
-        });
-      }
 
       statusEl.textContent = "Ready";
     });
   } catch (error) {
     console.error(error);
     if (statusEl) statusEl.textContent = "Something went wrong";
+    hasBootstrapped = false;
   }
 }
 

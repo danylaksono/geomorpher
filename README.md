@@ -13,6 +13,16 @@ GeoJSON morphing utilities for animating between regular geography and cartogram
 This library is currently in early-stage development (v0.1.1) and has recently completed a migration to a MapLibre-first adapter. The core morphing engine is stable, but the MapLibre adapter is new and under active development. Leaflet compatibility is maintained. Community feedback and contributions are welcome.
 
 
+## Features
+
+- **Projection Agnostic**: Auto-detects WGS84 (lat/lng) data; defaults to OSGB (British National Grid) for UK data but supports any CRS via `proj4`.
+- **MapLibre & Leaflet Adapters**: High-performance MapLibre-first implementation with Leaflet compatibility helpers.
+- **Generic Morphing Engine**: Smoothly interpolates between any two aligned GeoJSON geometries using `flubber`.
+- **Multivariate Glyphs**: Highly customizable DOM/SVG/Canvas overlays (charts, icons, sparklines) that stay synced with morphing geometry.
+- **Basemap Effects**: Synchronized fading, blurring, or grayscale effects for basemap layers during transitions.
+- **Cartogram Utilities**: Built-in support for converting grid/waffle cartogram records into GeoJSON.
+
+
 ## Installation
 
 ```bash
@@ -102,39 +112,27 @@ const cartogram = morpher.getCartogramFeatureCollection();
 const tween = morpher.getInterpolatedFeatureCollection(0.5);
 ```
 
-#### Using custom projections
+#### Projections & Coordinate Systems
 
-By default, `GeoMorpher` assumes input data is in **OSGB** (British National Grid) and converts to WGS84 for Leaflet. If your data is in a different coordinate system, pass a custom projection:
+While `geo-morpher` was born out of UK-centric cartography, it is fully generic. It internally projects all data to WGS84 (latitude/longitude) for mapping compatibility.
+
+- **Auto-detection**: If no projection is provided, `GeoMorpher` inspects your coordinates. If they look like WGS84, it uses them as-is.
+- **OSGB Default**: If coordinates fall outside the geographic range, it assumes OSGB (EPSG:27700) and transforms them to WGS84.
+- **Manual Override**: Pass a helper like `WebMercatorProjection` or a custom `proj4` wrapper for other systems.
 
 ```js
-import { GeoMorpher, WGS84Projection, isLikelyWGS84 } from "geo-morpher";
+import { GeoMorpher, WGS84Projection, createProj4Projection } from "geo-morpher";
+import proj4 from "proj4";
 
-// Auto-detect coordinate system
-const detectedProjection = isLikelyWGS84(regularGeoJSON);
-console.log("Detected:", detectedProjection); // 'WGS84', 'OSGB', or 'UNKNOWN'
+// 1. Auto-detected (usually works for WGS84 or OSGB)
+const morpher = new GeoMorpher({ regularGeoJSON, cartogramGeoJSON });
 
-// For data already in WGS84 (lat/lng)
-const morpher = new GeoMorpher({
-  regularGeoJSON,
-  cartogramGeoJSON,
-  projection: WGS84Projection, // No transformation needed
-});
+// 2. Explicit WGS84 (Identity)
+const morpher = new GeoMorpher({ ..., projection: WGS84Projection });
 
-// For Web Mercator data
-import { WebMercatorProjection } from "geo-morpher";
-const morpher = new GeoMorpher({
-  regularGeoJSON,
-  cartogramGeoJSON,
-  projection: WebMercatorProjection,
-});
-
-// Custom projection (e.g., using proj4)
-const customProjection = {
-  toGeo: ([x, y]) => {
-    // Transform [x, y] to [lng, lat]
-    return [lng, lat];
-  }
-};
+// 3. Custom Projection (e.g., UTM Zone 33N)
+const projection = createProj4Projection("+proj=utm +zone=33 +datum=WGS84", proj4);
+const morpher = new GeoMorpher({ ..., projection });
 ```
 
 See `examples/maplibre/projections/index.html` for a browser-based custom projection demo.

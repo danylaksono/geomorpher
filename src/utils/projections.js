@@ -33,26 +33,44 @@ export const WebMercatorProjection = {
  * @example
  * import proj4 from 'proj4';
  * const projection = createProj4Projection(
- *   '+proj=utm +zone=33 +datum=WGS84'
+ *   '+proj=utm +zone=33 +datum=WGS84',
+ *   proj4
  * );
  */
-export function createProj4Projection(projDefinition) {
-  if (typeof require !== 'undefined') {
-    try {
-      const proj4 = require('proj4');
-      const transform = proj4(projDefinition, 'WGS84');
-      return {
-        toGeo: ([x, y]) => {
-          const [lng, lat] = transform.forward([x, y]);
-          return [lng, lat];
-        },
-        name: `proj4: ${projDefinition}`
-      };
-    } catch (err) {
-      throw new Error('proj4 is required for custom projections. Install it with: npm install proj4');
+export function createProj4Projection(projDefinition, proj4Instance) {
+  let proj4 = proj4Instance;
+
+  // Try to find proj4 if not provided
+  if (!proj4) {
+    if (typeof window !== "undefined" && window.proj4) {
+      proj4 = window.proj4;
+    } else if (typeof globalThis !== "undefined" && globalThis.proj4) {
+      proj4 = globalThis.proj4;
+    } else if (typeof require !== "undefined") {
+      try {
+        proj4 = require("proj4");
+      } catch (err) {
+        // Silently fail if require fails
+      }
     }
   }
-  throw new Error('createProj4Projection is only available in Node.js environments');
+
+  if (proj4) {
+    const transform = proj4(projDefinition, "WGS84");
+    return {
+      toGeo: ([x, y]) => {
+        const [lng, lat] = transform.forward([x, y]);
+        return [lng, lat];
+      },
+      name: `proj4: ${projDefinition}`,
+    };
+  }
+
+  throw new Error(
+    "proj4 is required for custom projections. " +
+      "In Node.js: npm install proj4 and use require('proj4'). " +
+      "In browser: Include proj4.js script or pass it as the second argument."
+  );
 }
 
 /**

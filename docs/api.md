@@ -48,7 +48,7 @@ await morpher.prepare();
 - `geoJSONJoinColumn`: Feature property used for the join (default `"code"`). Must exist on both regular and cartogram collections.
 - `aggregations`: Object describing how to roll up numeric fields when multiple data rows map to the same feature. Supported keys mirror the enrichment helpers (`sum`, `mean`, `min`, `max`, `count`, `collect`).
 - `normalize`: When `true`, GeoMorpher normalises aggregated values by polygon area to keep metrics comparable after morphing.
-- `projection`: Projection helper that exposes `toGeo([x, y]) => [lng, lat]`. Defaults to an OSGB transformer; override with `WGS84Projection`, `WebMercatorProjection`, or a custom proj4 wrapper.
+- `projection`: Projection helper that exposes `toGeo([x, y]) => [lng, lat]`. If not provided, GeoMorpher attempts to auto-detect WGS84 coordinates; if they fall outside the WGS84 range, it defaults to an OSGB transformer. Override with `WGS84Projection`, `WebMercatorProjection`, or a custom proj4 wrapper.
 - `cartogramGridOptions`: Options forwarded to `normalizeCartogramInput`. Use when your cartogram input is a grid or waffle that needs to be converted to polygons.
 
 **Lifecycle**
@@ -234,7 +234,7 @@ const glyphController = await createMapLibreGlyphLayer({
 - `WGS84Projection`: identity `toGeo` function. Use when your GeoJSON is already in latitude/longitude.
 - `WebMercatorProjection`: converts EPSG:3857 X/Y values to WGS84.
 - `isLikelyWGS84(geojson)`: heuristic returning `'WGS84'`, `'OSGB'`, or `'UNKNOWN'`. Use it to decide which projection helper to pass to `GeoMorpher`.
-- `createProj4Projection(projDefinition)`: Node-only helper that wraps `proj4` and returns `{ toGeo }`. Throws if `proj4` is unavailable or you call it in the browser.
+- `createProj4Projection(projDefinition, proj4Instance)`: Helper that wraps `proj4` and returns `{ toGeo }`. Works in both Node.js and browser environments. Optionally pass the `proj4` library instance as the second argument if it's not available globally.
 - `parseCSV(text)`: lightweight CSV parser that yields an array of objects keyed by column name—convenient for transforming statistical tables before enrichment.
 - `createGridCartogramFeatureCollection(...)` and `normalizeCartogramInput(...)`: helpers for turning waffle/grid cartogram inputs into FeatureCollections GeoMorpher can consume.
 
