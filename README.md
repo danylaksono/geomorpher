@@ -7,7 +7,7 @@ GeoJSON morphing utilities for animating between regular geography and cartogram
 
 ![](demo.gif)
 
-To quickly create a grid cartogram, checkout my other library: ![https://danylaksono.is-a.dev/gridmapper/example/](https://danylaksono.is-a.dev/gridmapper/example/).
+To quickly create a grid cartogram, checkout my other library: ![https://danylaksono.is-a.dev/gridmapper/example/](https://danylaksono.is-a.dev/gridmapper/demo/).
 
 
 ## Features
