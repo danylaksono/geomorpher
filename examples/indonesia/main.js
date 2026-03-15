@@ -153,38 +153,49 @@ function createComparisonOutline(properties) {
 // helper to build tooltip html given hovered and optionally selected props
 function buildTooltipHTML(hoverProps, selectedProps) {
   if (!hoverProps) return "";
-  const buildRows = (props, includeRight = false) =>
+
+  const buildRows = () =>
     metrics
-      .map(
-        (m) => {
-          const left = m.format(props[m.key]);
-          const right = includeRight && selectedProps ? m.format(selectedProps[m.key]) : "";
-          if (includeRight) {
-            return `
-                  <div class="tooltip-row comparison-row">
-                    <span class="tooltip-label">${m.label}</span>
-                    <span class="tooltip-value" style="color:${m.color}">${left}</span>
-                    <span class="tooltip-value right" style="color:${m.color}">${right}</span>
-                  </div>
-                `;
-          }
+      .map((m) => {
+        const leftValue = m.format(hoverProps[m.key]);
+        const rightValue = selectedProps ? m.format(selectedProps[m.key]) : null;
+
+        if (selectedProps) {
           return `
-                  <div class="tooltip-row">
-                    <span class="tooltip-label">${m.label}</span>
-                    <span class="tooltip-value" style="color:${m.color}">${left}</span>
-                  </div>
-                `;
+            <tr>
+              <td class="tooltip-label">${m.label}</td>
+              <td class="tooltip-value" style="color:${m.color}">${leftValue}</td>
+              <td class="tooltip-value right" style="color:${m.color}">${rightValue}</td>
+            </tr>
+          `;
         }
-      )
+        return `
+          <div class="tooltip-row">
+            <span class="tooltip-label">${m.label}</span>
+            <span class="tooltip-value" style="color:${m.color}">${leftValue}</span>
+          </div>
+        `;
+      })
       .join("");
 
   if (selectedProps) {
-    const header = `<div class="tooltip-header comparison"><span>${hoverProps.PROVINSI}</span><span>${selectedProps.PROVINSI}</span></div>`;
-    const rows = buildRows(hoverProps, true);
-    return header + rows;
+    return `
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th class="header-hovered">${hoverProps.PROVINSI}</th>
+            <th class="header-selected">${selectedProps.PROVINSI}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${buildRows()}
+        </tbody>
+      </table>
+    `;
   }
 
-  return `<div class="tooltip-header">${hoverProps.PROVINSI}</div>` + buildRows(hoverProps);
+  return `<div class="tooltip-header">${hoverProps.PROVINSI}</div>` + buildRows();
 }
 
 function updateComparisonSelection(props) {

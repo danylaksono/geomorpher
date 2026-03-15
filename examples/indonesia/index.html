@@ -202,24 +202,61 @@
         }
 
         /* comparison mode adjustments */
-        .tooltip-header.comparison {
-            display: flex;
-            justify-content: space-between;
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
         }
 
-        .tooltip-header.comparison span {
-            width: 48%;
+        .comparison-table th {
+            text-align: left;
+            padding: 0.5rem 0.5rem 0.75rem 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 700;
+            color: #94a3b8;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        .tooltip-row.comparison-row {
-            display: grid;
-            grid-template-columns: auto 1fr 1fr;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .tooltip-row.comparison-row .tooltip-value.right {
+        .comparison-table th.header-hovered {
+            color: #3b82f6;
             text-align: right;
+            max-width: 120px;
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.2;
+        }
+
+        .comparison-table th.header-selected {
+            color: #ef4444;
+            text-align: right;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 120px;
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.2;
+        }
+
+        .comparison-table td {
+            padding: 0.4rem 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .comparison-table td.tooltip-label {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .comparison-table td.tooltip-value {
+            text-align: right;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .comparison-table td.right {
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .tooltip-label {
@@ -296,10 +333,10 @@
                     style="margin: 0 0 0.75rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">
                     Layer Visibility</h3>
                 <div class="layer-toggles">
+                    <label><input id="toggle-interpolated" type="checkbox" checked /> Animated Transition</label>
+                    <label><input id="toggle-glyphs" type="checkbox" checked /> Data Flowers</label>
                     <label><input id="toggle-regular" type="checkbox" /> Geographic Boundaries</label>
-                    <label><input id="toggle-interpolated" type="checkbox" checked /> Tween Morph</label>
                     <label><input id="toggle-cartogram" type="checkbox" /> Grid Cartogram</label>
-                    <label><input id="toggle-glyphs" type="checkbox" checked /> Rose Charts</label>
                 </div>
             </div>
 
