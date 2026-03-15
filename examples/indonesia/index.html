@@ -82,11 +82,44 @@
             line-height: 1.6;
         }
 
-        .slider,
-        .toggle,
-        .layer-toggles {
+        .slider {
             display: grid;
             gap: 0.75rem;
+        }
+
+        .slider-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        #play-button {
+            background: #3b82f6;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            flex-shrink: 0;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        #play-button:hover {
+            background: #2563eb;
+        }
+
+        #play-button:active {
+            transform: scale(0.95);
+        }
+
+        #play-button svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
         }
 
         label {
@@ -245,7 +278,17 @@
 
             <div class="slider">
                 <label for="morphFactor">Morph factor: <strong id="factorValue">0.50</strong></label>
-                <input id="morphFactor" type="range" min="0" max="1" step="0.01" value="0" />
+                <div class="slider-controls">
+                    <button id="play-button" title="Automate Slider Move">
+                        <svg id="play-icon" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg id="pause-icon" viewBox="0 0 24 24" style="display: none;">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
+                    </button>
+                    <input id="morphFactor" type="range" min="0" max="1" step="0.01" value="0" />
+                </div>
             </div>
 
             <div>

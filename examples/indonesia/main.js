@@ -101,7 +101,7 @@ const glyphToggle = document.getElementById("toggle-glyphs");
 let hasBootstrapped = false;
 let isPlaying = false;
 let animationFrameId = null;
-let animationDirection = 1; // 1 for forward, -1 for backward
+let animationDirection = 1; // 1 for 0->1, -1 for 1->0
 
 // comparison mode state --------------------------------------------------
 // when a province/glyph is clicked we compute an outline drawing function
@@ -672,20 +672,32 @@ async function bootstrap() {
         updateUIForFactor(value);
       });
 
-      const animate = () => {
+      let lastTimestamp = 0;
+      const animate = (timestamp) => {
         if (!isPlaying) return;
 
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const elapsed = timestamp - lastTimestamp;
+        lastTimestamp = timestamp;
+
+        // Roughly 1.5 seconds for a full 0 to 1 transition
+        const speed = 0.0006;
         let currentValue = Number(slider.value);
-        const step = 0.005;
+        
+        currentValue += elapsed * speed * animationDirection;
 
-        currentValue += step * animationDirection;
-
-        if (currentValue >= 1) {
+        if (animationDirection === 1 && currentValue >= 1) {
           currentValue = 1;
-          animationDirection = -1;
-        } else if (currentValue <= 0) {
+          updateUIForFactor(currentValue);
+          animationDirection = -1; // Set next direction
+          stopAnimation();
+          return;
+        } else if (animationDirection === -1 && currentValue <= 0) {
           currentValue = 0;
-          animationDirection = 1;
+          updateUIForFactor(currentValue);
+          animationDirection = 1; // Set next direction
+          stopAnimation();
+          return;
         }
 
         updateUIForFactor(currentValue);
@@ -693,10 +705,22 @@ async function bootstrap() {
       };
 
       const startAnimation = () => {
+        if (isPlaying) return;
+        
+        // Ensure starting point is correct for the current direction 
+        // if user manually moved the slider
+        const currentValue = Number(slider.value);
+        if (animationDirection === 1 && currentValue >= 1) {
+          updateUIForFactor(0);
+        } else if (animationDirection === -1 && currentValue <= 0) {
+          updateUIForFactor(1);
+        }
+
         isPlaying = true;
+        lastTimestamp = 0;
         playIcon.style.display = "none";
         pauseIcon.style.display = "block";
-        animate();
+        animationFrameId = requestAnimationFrame(animate);
       };
 
       const stopAnimation = () => {
