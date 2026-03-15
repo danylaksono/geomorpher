@@ -3,21 +3,20 @@
 [![npm version](https://badge.fury.io/js/geo-morpher.svg)](https://badge.fury.io/js/geo-morpher)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-GeoJSON morphing utilities for animating between regular geography and cartograms, packaged as a native JavaScript library with a MapLibre-first adapter and Leaflet compatibility helpers.
+GeoJSON morphing utilities for animating between regular geography and cartograms, with first-class **MapLibre GL JS** support. Smoothly interpolate between any two aligned GeoJSON geometries and overlay multivariate glyphs that stay in sync.
 
 ![](demo.gif)
 
-To quickly create a grid cartogram, checkout my other library: ![gridmapper](https://danylaksono.is-a.dev/gridmapper/demo/).
-
+> [!TIP]
+> To quickly create a grid cartogram, check out ![gridmapper](https://danylaksono.is-a.dev/gridmapper/).
 
 ## Features
 
-- **MapLibre & Leaflet Adapters**: High-performance MapLibre-first implementation with Leaflet compatibility helpers.
-- **Generic Morphing Engine**: Smoothly interpolates between any two aligned GeoJSON geometries using `flubber`.
-- **Multivariate Glyphs**: Highly customizable DOM/SVG/Canvas overlays (charts, icons, sparklines) that stay synced with morphing geometry.
-- **Basemap Effects**: Synchronized fading, blurring, or grayscale effects for basemap layers during transitions.
-- **Projection Agnostic**: Auto-detects WGS84 (lat/lng) data; defaults to OSGB (British National Grid) for UK data but supports any CRS via `proj4`.
-
+- **MapLibre-first**: High-performance adapter for modern vector maps.
+- **Smooth Morphing**: Seamlessly interpolate between any two aligned GeoJSON geometries (using `flubber`).
+- **Multivariate Glyphs**: Position-synced DOM overlays for charts, icons, and sparklines.
+- **Basemap Effects**: Synchronized fading and styling of basemaps during transitions.
+- **Projection Agnostic**: Automatic support for WGS84, OSGB, and custom projections.
 
 ## Installation
 
@@ -25,475 +24,111 @@ To quickly create a grid cartogram, checkout my other library: ![gridmapper](htt
 npm install geo-morpher
 ```
 
-Leaflet is provided as a peer dependency—bring your own Leaflet instance when using the compatibility helpers. MapLibre remains the default adapter and is bundled as a dependency for out-of-the-box usage; if your build already supplies `maplibre-gl`, mark it as external to avoid duplicating the library.
+## Quick Start (MapLibre)
 
-## Usage
+```javascript
+import maplibregl from "maplibre-gl";
+import { GeoMorpher, createMapLibreMorphLayers } from "geo-morpher";
 
-### MapLibre adapter (default)
+// 1. Prepare data (regular vs cartogram geography)
+const morpher = new GeoMorpher({
+  regularGeoJSON: await (await fetch('regular_lsoa.json')).json(),
+  cartogramGeoJSON: await (await fetch('cartogram_lsoa.json')).json(),
+});
+await morpher.prepare();
 
-- `createMapLibreMorphLayers` provisions GeoJSON sources and fill layers for regular, cartogram, and interpolated geometries, exposing an `updateMorphFactor` helper to drive tweening from UI controls.
-- `createMapLibreGlyphLayer` renders glyphs with `maplibregl.Marker` instances; enable `scaleWithZoom` to regenerate glyph markup as users zoom.
-- Pass your MapLibre namespace explicitly (`maplibreNamespace: maplibregl`) when calling glyph helpers in module-bundled builds where `maplibregl` is not attached to `globalThis`.
-- For heavy glyph scenes, consider upgrading to a [CustomLayerInterface](https://www.maplibre.org/maplibre-gl-js/docs/API/interfaces/CustomLayerInterface/) implementation that batches drawing on the GPU. The marker pipeline keeps the API simple while offering a documented migration path.
+// 2. Initialize MapLibre
+const map = new maplibregl.Map({ ... });
 
-#### MapLibre basemap effects
+map.on('load', async () => {
+  // 3. Create morphing layers
+  const morph = await createMapLibreMorphLayers({
+    morpher,
+    map,
+    interpolatedStyle: {
+      paint: { "fill-color": "#22c55e", "fill-opacity": 0.4 }
+    }
+  });
 
-`createMapLibreMorphLayers` accepts a `basemapEffect` configuration that interpolates paint properties on existing style layers as the morph factor changes. This mirrors the Leaflet DOM-based blur/fade behaviour while staying inside the MapLibre style system.
+  // 4. Drive the morph (0 = regular, 1 = cartogram)
+  morph.updateMorphFactor(0.5);
+});
+```
 
-```js
+## Multivariate Glyphs
+
+Overlay custom visualizations (SVG, Canvas, or HTML) that stay synced with the morphing polygons.
+
+```javascript
+import { createMapLibreGlyphLayer } from "geo-morpher";
+
+const glyphLayer = await createMapLibreGlyphLayer({
+  morpher,
+  map,
+  drawGlyph: ({ data, feature }) => ({
+    html: `<div class="glyph">${feature.properties.value}</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  }),
+  maplibreNamespace: maplibregl
+});
+
+// Update glyphs during morphing
+glyphLayer.updateGlyphs({ morphFactor: 0.5 });
+```
+
+## Basemap Effects
+
+Automatically adjust basemap styles as you morph to focus attention on the data.
+
+```javascript
 const morph = await createMapLibreMorphLayers({
   morpher,
   map,
   basemapEffect: {
-    layers: ["basemap", "basemap-labels"],
+    layers: ["osm-tiles"],
     properties: {
-      "raster-opacity": [1, 0.15],
-      "raster-brightness-max": { from: 1, to: 1.4 },
-    },
-    propertyClamp: {
-      "raster-brightness-max": [0, 2],
-    },
-    easing: (t) => t * t, // optional easing curve
-  },
+      "raster-opacity": [1, 0.25],
+      "raster-saturation": [0, -1]
+    }
+  }
 });
-
-// Update morph factor, basemap effect adjusts automatically
-morph.updateMorphFactor(0.75);
-
-// Apply effect manually (e.g., when animating via requestAnimationFrame)
-morph.applyBasemapEffect(0.5);
 ```
 
-- Provide a `layers` string/array or resolver function to target paint properties across multiple layers.
-- Supply ranges (`[from, to]` or `{ from, to }`) for numeric properties such as `raster-opacity`, `fill-opacity`, or `line-opacity`.
-- Use functions in `properties[layerId]` for full control or to manipulate non-numeric paint values.
-- Capture-and-reset logic ensures properties revert to their original values when the effect is disabled.
-- Canvas-style blur is not built-in; use a custom MapLibre layer if a true blur shader is required.
+## Core API
 
+### GeoMorpher
+The core engine for geometry interpolation.
+- `new GeoMorpher({ regularGeoJSON, cartogramGeoJSON, data, aggregations })`
+- `prepare()`: Run initialization (projection, enrichment).
+- `getInterpolatedFeatureCollection(factor)`: Get the geometry at a specific state.
 
-### 1. Prepare morphing data
-
-```js
-import { GeoMorpher } from "geo-morpher";
-import regularGeoJSON from "./data/oxford_lsoas_regular.json" assert { type: "json" };
-import cartogramGeoJSON from "./data/oxford_lsoas_cartogram.json" assert { type: "json" };
-
-const morpher = new GeoMorpher({
-  regularGeoJSON,
-  cartogramGeoJSON,
-  data: await fetchModelData(),
-  aggregations: {
-    population: "sum",
-    households: "sum",
-  },
-});
-
-await morpher.prepare();
-
-const regular = morpher.getRegularFeatureCollection();
-const cartogram = morpher.getCartogramFeatureCollection();
-const tween = morpher.getInterpolatedFeatureCollection(0.5);
-```
-
-#### Projections & Coordinate Systems
-
-While `geo-morpher` was born out of UK-centric cartography, it is fully generic. It internally projects all data to WGS84 (latitude/longitude) for mapping compatibility.
-
-- **Auto-detection**: If no projection is provided, `GeoMorpher` inspects your coordinates. If they look like WGS84, it uses them as-is.
-- **OSGB Default**: If coordinates fall outside the geographic range, it assumes OSGB (EPSG:27700) and transforms them to WGS84.
-- **Manual Override**: Pass a helper like `WebMercatorProjection` or a custom `proj4` wrapper for other systems.
-
-```js
-import { GeoMorpher, WGS84Projection, createProj4Projection } from "geo-morpher";
+### Projections
+Auto-detects WGS84 or OSGB. For UTM or others:
+```javascript
+import { createProj4Projection } from "geo-morpher";
 import proj4 from "proj4";
 
-// 1. Auto-detected (usually works for WGS84 or OSGB)
-const morpher = new GeoMorpher({ regularGeoJSON, cartogramGeoJSON });
-
-// 2. Explicit WGS84 (Identity)
-const morpher = new GeoMorpher({ ..., projection: WGS84Projection });
-
-// 3. Custom Projection (e.g., UTM Zone 33N)
 const projection = createProj4Projection("+proj=utm +zone=33 +datum=WGS84", proj4);
 const morpher = new GeoMorpher({ ..., projection });
 ```
 
-See `examples/maplibre/projections/index.html` for a browser-based custom projection demo.
+## Examples
 
-### 2. Drop the morph straight into Leaflet (compat)
-
-```js
-import L from "leaflet";
-import { createLeafletMorphLayers } from "geo-morpher";
-
-const basemapLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "&copy; OpenStreetMap contributors",
-}).addTo(map);
-
-let blurEnabled = true;
-
-const {
-  group,
-  regularLayer,
-  cartogramLayer,
-  tweenLayer,
-  updateMorphFactor,
-} = await createLeafletMorphLayers({
-  morpher,
-  L,
-  morphFactor: 0.25,
-  regularStyle: () => ({ color: "#1f77b4", weight: 1 }),
-  cartogramStyle: () => ({ color: "#ff7f0e", weight: 1 }),
-  tweenStyle: () => ({ color: "#2ca02c", weight: 2 }),
-  onEachFeature: (feature, layer) => {
-    layer.bindTooltip(`${feature.properties.code}`);
-  },
-  basemapLayer,
-  basemapEffect: {
-    blurRange: [0, 12],
-    opacityRange: [1, 0.05],
-    grayscaleRange: [0, 1],
-    isEnabled: () => blurEnabled,
-  },
-});
-
-group.addTo(map);
-
-// Update the tween geometry whenever you like
-updateMorphFactor(0.75);
-```
-
-Provide either `basemapLayer` (any Leaflet layer with a container) or `basemapEffect.target` to tell the helper which element to manipulate. By default the basemap will progressively blur and fade as the morph factor approaches 1, but you can adjust the ranges—or add brightness/grayscale tweaks—to match your design. You can also wire up UI to toggle the behaviour at runtime by returning `false` from `basemapEffect.isEnabled`.
-
-### 3. Overlay multivariate glyphs
-
-The glyph system is **completely customizable** with no hardcoded chart types. You provide a rendering function that can return any visualization you can create with HTML, SVG, Canvas, or third-party libraries like D3.js or Chart.js. The helper automatically keeps markers positioned and synchronized with the morphing geometry.
-
-See the full glyphs guide: `docs/glyphs.md`
-
-**Example with pie charts:**
-
-```js
-import {
-  GeoMorpher,
-  createLeafletMorphLayers,
-  createLeafletGlyphLayer,
-} from "geo-morpher";
-
-const categories = [
-  { key: "population", color: "#4e79a7" },
-  { key: "households", color: "#f28e2c" },
-];
-
-const drawPie = ({ data, feature }) => {
-  const properties = data?.data?.properties ?? feature.properties ?? {};
-  const slices = categories
-    .map(({ key, color }) => ({
-      value: Number(properties[key] ?? 0),
-      color,
-    }))
-    .filter((slice) => slice.value > 0);
-
-  if (slices.length === 0) return null;
-
-  const svg = buildPieSVG(slices); // your own renderer (D3, Canvas, vanilla SVG...)
-  return {
-    html: svg,
-    className: "pie-chart-marker",
-    iconSize: [52, 52],
-    iconAnchor: [26, 26],
-  };
-};
-
-const glyphLayer = await createLeafletGlyphLayer({
-  morpher,
-  L,
-  map,
-  geometry: "interpolated",
-  morphFactor: 0.25,
-  pane: "glyphs",
-  drawGlyph: drawPie,
-});
-
-// Keep glyphs synced with the tweened geometry
-slider.addEventListener("input", (event) => {
-  const value = Number(event.target.value);
-  updateMorphFactor(value);
-  glyphLayer.updateGlyphs({ morphFactor: value });
-});
-
-// You can also decouple glyphs from the GeoMorpher by providing a
-// `featureCollection` or a live `featureProvider({ geometry, morphFactor })`:
-//
-// const glyph = await createLeafletGlyphLayer({
-//   drawGlyph,
-//   L,
-//   featureCollection: morpher.getRegularFeatureCollection(), // static set
-// });
-//
-// const glyphProvider = await createLeafletGlyphLayer({
-//   drawGlyph,
-//   L,
-//   featureProvider: ({ geometry, morphFactor }) => morpher.getInterpolatedFeatureCollection(morphFactor),
-// });
-//
-// The adapters also export small helper functions to convert normalized glyph values
-// into platform-specific objects: `createLeafletIcon` and `createMapLibreMarkerData`.
-```
-
-`drawGlyph` receives `{ feature, featureId, data, morpher, geometry, morphFactor }` and can return:
-
-- `null`/`undefined` to skip the feature
-- A plain HTML string or DOM element
-- An object with `html`, `iconSize`, `iconAnchor`, `className`, `pane`, and optional `markerOptions`
-- Or an object containing a pre-built `icon` (any Leaflet `Icon`), if you need full control
-
-**Configuration object properties:**
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `html` | string \| HTMLElement | - | Your custom HTML/SVG string or DOM element |
-| `className` | string | `"geomorpher-glyph"` | CSS class for the marker |
-| `iconSize` | [number, number] | `[48, 48]` | Width and height in pixels |
-| `iconAnchor` | [number, number] | `[24, 24]` | Anchor point in pixels (center by default) |
-| `pane` | string | - | Leaflet pane name for z-index control |
-| `markerOptions` | object | `{}` | Additional Leaflet marker options |
-| `divIconOptions` | object | `{}` | Additional Leaflet divIcon options |
-| `icon` | L.Icon | - | Pre-built Leaflet icon (overrides all other options) |
-
-Optionally provide `getGlyphData` or `filterFeature` callbacks to customise how data/visibility is resolved. When you call `glyphLayer.clear()` all markers are removed; `glyphLayer.getState()` exposes the current geometry, morph factor, and marker count.
-
-#### Data contract for glyphs
-
-By default `createLeafletGlyphLayer` will surface whatever the core `GeoMorpher` knows about the current feature via `morpher.getKeyData()`:
-
-| field        | type     | description |
-|--------------|----------|-------------|
-| `feature`    | GeoJSON Feature | The rendered feature taken from the requested geography (`regular`, `cartogram`, or tweened). Includes `feature.properties` and a `centroid` array. |
-| `featureId`  | string  | Resolved via `getFeatureId(feature)` (defaults to `feature.properties.code ?? feature.properties.id`). |
-| `data`       | object \| null | When using the built-in lookup this is the morpher key entry: `{ code, population, data }`. The `data` property holds the *enriched* GeoJSON feature returned from `GeoMorpher.prepare()`—handy when you stored additional indicators during enrichment. |
-| `morpher`    | `GeoMorpher` | The instance you passed in, allowing on-demand queries (`getInterpolatedLookup`, etc.). |
-| `geometry`   | string \| function | The geometry source currently in play (`regular`, `cartogram`, or `interpolated`). |
-| `morphFactor`| number  | The morph factor used for the last update (only meaningful when geometry is `interpolated`). |
-
-If you want a different data shape, supply `getGlyphData`:
-
-```js
-const glyphLayer = await createLeafletGlyphLayer({
-  morpher,
-  L,
-  drawGlyph,
-  getGlyphData: ({ featureId }) => externalStatsById[featureId],
-});
-```
-
-The callback receives the same context object (minus the final `data` field) and should return whatever payload your renderer expects. `filterFeature(context)` lets you drop glyphs entirely (return `false`) for a given feature.
-
-#### Alternative chart types and rendering approaches
-
-The glyph system accepts any HTML/SVG content. Here are examples with different visualization types:
-
-**Bar chart:**
-```js
-drawGlyph: ({ data, feature }) => {
-  const values = [data.value1, data.value2, data.value3];
-  const bars = values.map((v, i) => 
-    `<rect x="${i*20}" y="${60-v}" width="15" height="${v}" fill="steelblue"/>`
-  ).join('');
-  
-  return {
-    html: `<svg width="60" height="60">${bars}</svg>`,
-    iconSize: [60, 60],
-    iconAnchor: [30, 30],
-  };
-}
-```
-
-**Using D3.js:**
-```js
-import * as d3 from "d3";
-
-drawGlyph: ({ data }) => {
-  const div = document.createElement('div');
-  div.style.width = '80px';
-  div.style.height = '80px';
-  
-  const svg = d3.select(div).append('svg')
-    .attr('width', 80)
-    .attr('height', 80);
-  
-  // Use D3 to create any visualization
-  svg.selectAll('circle')
-    .data(data.values)
-    .enter().append('circle')
-    .attr('cx', (d, i) => i * 20 + 10)
-    .attr('cy', 40)
-    .attr('r', d => d.radius)
-    .attr('fill', d => d.color);
-  
-  return div; // Return DOM element directly
-}
-```
-
-**Custom icons or images:**
-```js
-drawGlyph: ({ data }) => {
-  return {
-    html: `<img src="/icons/${data.category}.png" width="32" height="32"/>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-  };
-}
-```
-
-**Pre-built Leaflet icons:**
-```js
-drawGlyph: ({ data }) => {
-  const icon = L.icon({
-    iconUrl: `/markers/${data.type}.png`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-  });
-  
-  return { icon }; // Full control over Leaflet icon
-}
-```
-
-**Sparkline with HTML Canvas:**
-```js
-drawGlyph: ({ data }) => {
-  const canvas = document.createElement('canvas');
-  canvas.width = 80;
-  canvas.height = 40;
-  const ctx = canvas.getContext('2d');
-  
-  // Draw sparkline
-  ctx.strokeStyle = '#4e79a7';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  data.timeSeries.forEach((value, i) => {
-    const x = (i / (data.timeSeries.length - 1)) * 80;
-    const y = 40 - (value * 40);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-  
-  return canvas.toDataURL(); // Return as data URL
-}
-```
-
-#### Zoom-scaling glyphs
-
-By default, glyphs maintain a fixed pixel size regardless of map zoom level (standard Leaflet marker behavior). However, you can enable `scaleWithZoom` to make glyphs resize proportionally with the underlying map features—ideal for waffle charts, heatmap cells, or other visualizations that should fill polygon bounds.
-
-```js
-const glyphLayer = await createLeafletGlyphLayer({
-  morpher,
-  L,
-  map,
-  scaleWithZoom: true, // Enable zoom-responsive sizing
-  drawGlyph: ({ data, feature, featureBounds, zoom }) => {
-    if (!featureBounds) return null;
-    
-    const { width, height } = featureBounds; // Pixel dimensions at current zoom
-    
-    // Create waffle chart that fills the cartogram polygon
-    const gridSize = 10;
-    const cellSize = Math.min(width, height) / gridSize;
-    const fillRatio = data.value / data.max;
-    const filledCells = Math.floor(gridSize * gridSize * fillRatio);
-    
-    const cells = [];
-    for (let i = 0; i < gridSize; i++) {
-      for (let j = 0; j < gridSize; j++) {
-        const index = i * gridSize + j;
-        const filled = index < filledCells;
-        cells.push(
-          `<rect x="${j * cellSize}" y="${i * cellSize}" 
-                 width="${cellSize}" height="${cellSize}" 
-                 fill="${filled ? '#4e79a7' : '#e0e0e0'}"/>`
-        );
-      }
-    }
-    
-    return {
-      html: `<svg width="${width}" height="${height}">${cells.join('')}</svg>`,
-      iconSize: [width, height],
-      iconAnchor: [width / 2, height / 2],
-    };
-  },
-});
-```
-
-When `scaleWithZoom` is enabled:
-- `featureBounds` provides `{ width, height, center, bounds }` in pixels at the current zoom level
-- `zoom` provides the current map zoom level
-- Glyphs automatically update when users zoom in/out
-- Call `glyphLayer.destroy()` to clean up zoom listeners when removing the layer
-
-A complete example is available at `examples/leaflet/zoom-scaling-glyphs.html`.
-
-### Legacy wrapper
-
-If you previously relied on the `geoMorpher` factory from the Observable notebook, it is still available:
-
-```js
-import { geoMorpher } from "geo-morpher";
-
-const result = await geoMorpher({
-  regularGeoJSON,
-  cartogramGeoJSON,
-  data,
-  aggregations,
-  morphFactor: 0.5,
-});
-
-console.log(result.tweenLookup);
-```
-
-### Node script (removed)
-
-The previous Node-only example has been removed in favor of browser-based demos under `examples/maplibre` and `examples/leaflet`.
-
-### Native browser examples (MapLibre & Leaflet)
-
-Serve the browser demos to see geo-morpher running on top of either Leaflet or MapLibre without a build step. Dependencies are resolved via import maps to CDN-hosted ES modules.
-
+Run the local server to see demos:
 ```bash
 npm run examples:browser
 ```
+- **MapLibre Demo**: Basic morphing and glyphs.
+- **Indonesia**: Large-scale, multipolygon geometry morphing.
+- **Projections**: Custom coordinate systems.
 
-Then open:
-- MapLibre demo: <http://localhost:4173/examples/maplibre/index.html>
-- Indonesia (MapLibre): <http://localhost:4173/examples/maplibre/indonesia/index.html>
-- MapLibre (Projections): <http://localhost:4173/examples/maplibre/projections/index.html>
-- Leaflet demo: <http://localhost:4173/examples/leaflet/index.html>
-- Leaflet zoom-scaling: <http://localhost:4173/examples/leaflet/zoom-scaling-glyphs.html>
-
-Each demo provides a morph slider and glyph overlays; the MapLibre version showcases GPU-driven rendering, paint-property basemap fading, and DOM marker glyphs running through the new adapter. (An internet connection is required to fetch CDN-hosted modules and map tiles.)
-
-**Additional examples:**
-- `examples/maplibre/index.html` - MapLibre adaptation with basemap paint-property effects and layer toggles
-- `examples/leaflet/zoom-scaling-glyphs.html` - Demonstrates zoom-responsive waffle charts that resize to fill cartogram polygons as you zoom in/out
-
-## Testing
-
-Run the bundled smoke tests with:
-
-```bash
-npm test
-```
-
-## Author
-
-Dany Laksono
-
-## License
-
-MIT
+## Legacy Support
+Leaflet is still supported via `createLeafletMorphLayers` and `createLeafletGlyphLayer`. See [API Reference](docs/api.md) for details.
 
 ## Documentation
+- [API Reference](docs/api.md)
+- [Glyphs Guide](docs/glyphs.md)
 
-- API Reference: `docs/api.md`
-- Glyphs Guide: `docs/glyphs.md`
+## License
+MIT © [Dany Laksono](https://github.com/danylaksono)
