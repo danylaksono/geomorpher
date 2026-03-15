@@ -7,6 +7,7 @@ import {
 	createGridCartogramFeatureCollection,
 	normalizeCartogramInput,
 } from "./utils/cartogram.js";
+import { flattenPositions } from "./adapters/shared/geometry.js";
 
 export { 
   GeoMorpher, 
@@ -25,6 +26,7 @@ export {
 	parseCSV,
 	createGridCartogramFeatureCollection,
 	normalizeCartogramInput,
+	flattenPositions,
 };
 
 // MapLibre-first convenience aliases (default adapter)

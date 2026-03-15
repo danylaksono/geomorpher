@@ -5,8 +5,8 @@ import {
   createMapLibreCustomGlyphLayer,
   parseCSV,
   WGS84Projection,
-} from "../../src/index.js";
-import { flattenPositions } from "../../src/adapters/shared/geometry.js";
+  flattenPositions,
+} from "geo-morpher";
 
 const metrics = [
   {
