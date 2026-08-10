@@ -1,31 +1,69 @@
 {
     "name": "geo-morpher",
-    "version": "0.1.5",
+    "version": "0.2.0",
     "description": "GeoJSON morphing utilities with MapLibre-first adapter and Leaflet compatibility",
     "type": "module",
     "main": "src/index.js",
+    "types": "./types/index.d.ts",
+    "unpkg": "./dist/geo-morpher.global.min.js",
+    "jsdelivr": "./dist/geo-morpher.global.min.js",
     "exports": {
-        ".": "./src/index.js",
-        "./leaflet": "./src/adapters/leaflet/index.js",
-        "./leaflet/morph": "./src/adapters/leaflet/morphLayers.js",
-        "./leaflet/glyph": "./src/adapters/leaflet/glyphLayer.js",
-        "./maplibre": "./src/adapters/maplibre/index.js",
-        "./maplibre/morph": "./src/adapters/maplibre/morphLayers.js",
-        "./maplibre/glyph": "./src/adapters/maplibre/glyphLayer.js",
-        "./adapters/leaflet": "./src/adapters/leaflet.js",
-        "./adapters/maplibre": "./src/adapters/maplibre.js",
-        "./core/geomorpher": "./src/core/geomorpher.js"
+        ".": {
+            "types": "./types/index.d.ts",
+            "default": "./src/index.js"
+        },
+        "./leaflet": {
+            "types": "./types/leaflet.d.ts",
+            "default": "./src/adapters/leaflet/index.js"
+        },
+        "./leaflet/morph": {
+            "types": "./types/leaflet.d.ts",
+            "default": "./src/adapters/leaflet/morphLayers.js"
+        },
+        "./leaflet/glyph": {
+            "types": "./types/leaflet.d.ts",
+            "default": "./src/adapters/leaflet/glyphLayer.js"
+        },
+        "./maplibre": {
+            "types": "./types/maplibre.d.ts",
+            "default": "./src/adapters/maplibre/index.js"
+        },
+        "./maplibre/morph": {
+            "types": "./types/maplibre.d.ts",
+            "default": "./src/adapters/maplibre/morphLayers.js"
+        },
+        "./maplibre/glyph": {
+            "types": "./types/maplibre.d.ts",
+            "default": "./src/adapters/maplibre/glyphLayer.js"
+        },
+        "./adapters/leaflet": {
+            "types": "./types/leaflet.d.ts",
+            "default": "./src/adapters/leaflet.js"
+        },
+        "./adapters/maplibre": {
+            "types": "./types/maplibre.d.ts",
+            "default": "./src/adapters/maplibre.js"
+        },
+        "./core/geomorpher": {
+            "types": "./types/core.d.ts",
+            "default": "./src/core/geomorpher.js"
+        },
+        "./dist/*": "./dist/*",
+        "./package.json": "./package.json"
     },
     "files": [
         "src",
-        "data",
-        "examples",
+        "types",
+        "dist",
         "README.md"
     ],
+    "sideEffects": false,
     "scripts": {
         "test": "node --test",
+        "typecheck": "tsc -p tsconfig.json",
         "examples:browser": "npx http-server -p 4173 .",
-        "build": "rollup -c"
+        "build": "rollup -c",
+        "prepublishOnly": "npm run build"
     },
     "keywords": [
         "maplibre",
@@ -40,23 +78,49 @@
         "coordinate-transformation",
         "gis"
     ],
-    "author": "",
+    "author": "Dany Laksono <danylaksono@ugm.ac.id> (https://github.com/danylaksono)",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/danylaksono/geomorpher.git"
+    },
+    "bugs": {
+        "url": "https://github.com/danylaksono/geomorpher/issues"
+    },
+    "homepage": "https://danylaksono.is-a.dev/geomorpher/",
+    "engines": {
+        "node": ">=18"
+    },
     "dependencies": {
-        "@turf/turf": "^6.5.0",
-        "flubber": "^0.4.2",
-        "lodash": "^4.17.21",
-        "maplibre-gl": ">=5.8.0"
+        "@turf/bbox": "^6.5.0",
+        "@turf/boolean-point-in-polygon": "^6.5.0",
+        "@turf/center-of-mass": "^6.5.0",
+        "@turf/centroid": "^6.5.0",
+        "@turf/helpers": "^6.5.0",
+        "@turf/invariant": "^6.5.0",
+        "@turf/meta": "^6.5.0",
+        "@turf/point-on-feature": "^6.5.0",
+        "@types/geojson": "^7946.0.14",
+        "flubber": "^0.4.2"
     },
     "peerDependencies": {
         "leaflet": ">=1.7.0",
         "maplibre-gl": ">=5.8.0"
+    },
+    "peerDependenciesMeta": {
+        "leaflet": {
+            "optional": true
+        },
+        "maplibre-gl": {
+            "optional": true
+        }
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^25.0.8",
         "@rollup/plugin-json": "^6.1.0",
         "@rollup/plugin-node-resolve": "^15.3.1",
         "@rollup/plugin-terser": "^0.4.4",
-        "rollup": "^4.52.5"
+        "rollup": "^4.52.5",
+        "typescript": "^5.6.0"
     }
 }

@@ -1,4 +1,4 @@
-import isEmpty from "lodash/isEmpty.js";
+import { isEmpty } from "./lang.js";
 
 function pushField({ row, field }) {
   row.push(field.value);

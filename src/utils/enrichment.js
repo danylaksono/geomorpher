@@ -1,5 +1,4 @@
-import isEmpty from "lodash/isEmpty.js";
-import cloneDeep from "lodash/cloneDeep.js";
+import { cloneDeep, isEmpty } from "./lang.js";
 
 export function groupByJoinColumn(data, joinColumn) {
   return data.reduce((groups, item) => {

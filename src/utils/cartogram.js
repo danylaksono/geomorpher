@@ -1,7 +1,6 @@
-import cloneDeep from "lodash/cloneDeep.js";
-import isEmpty from "lodash/isEmpty.js";
-import * as turf from "@turf/turf";
+import turfBbox from "@turf/bbox";
 import { featureCollection, polygon } from "@turf/helpers";
+import { cloneDeep, isEmpty } from "./lang.js";
 import { parseCSV } from "./csv.js";
 
 const GEOJSON_TYPES = new Set(["FeatureCollection", "Feature", "GeometryCollection", "Polygon", "MultiPolygon"]);
@@ -38,7 +37,7 @@ function ensureExtent({ extent, regularGeoJSON }) {
   }
 
   if (regularGeoJSON && isGeoJSON(regularGeoJSON)) {
-    const bounds = turf.bbox(regularGeoJSON);
+    const bounds = turfBbox(regularGeoJSON);
     if (bounds && bounds.every((value) => Number.isFinite(value))) {
       return bounds;
     }

@@ -1,8 +1,11 @@
-import cloneDeep from "lodash/cloneDeep.js";
-import keyBy from "lodash/keyBy.js";
-import mapValues from "lodash/mapValues.js";
 import flubber from "flubber";
-import * as turf from "@turf/turf";
+import turfCenterOfMass from "@turf/center-of-mass";
+import turfCentroid from "@turf/centroid";
+import turfPointOnFeature from "@turf/point-on-feature";
+import turfBooleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { getCoord } from "@turf/invariant";
+import { featureCollection } from "@turf/helpers";
+import { cloneDeep, keyBy, mapValues } from "../utils/lang.js";
 import { enrichGeoData, createLookup } from "../utils/enrichment.js";
 import { toWGS84FeatureCollection } from "../utils/projection.js";
 import { normalizeCartogramInput } from "../utils/cartogram.js";
@@ -284,9 +287,9 @@ function resolveFeatureAnchor(feature) {
 
   if (isPolygonal) {
     try {
-      const centerOfMass = turf.centerOfMass(feature);
-      const coordinate = turf.getCoord(centerOfMass);
-      if (isFiniteCoordinatePair(coordinate) && turf.booleanPointInPolygon(centerOfMass, feature)) {
+      const centerOfMass = turfCenterOfMass(feature);
+      const coordinate = getCoord(centerOfMass);
+      if (isFiniteCoordinatePair(coordinate) && turfBooleanPointInPolygon(centerOfMass, feature)) {
         return coordinate;
       }
     } catch {
@@ -294,8 +297,8 @@ function resolveFeatureAnchor(feature) {
     }
 
     try {
-      const pointOnFeature = turf.pointOnFeature(feature);
-      const coordinate = turf.getCoord(pointOnFeature);
+      const pointOnFeature = turfPointOnFeature(feature);
+      const coordinate = getCoord(pointOnFeature);
       if (isFiniteCoordinatePair(coordinate)) {
         return coordinate;
       }
@@ -305,8 +308,8 @@ function resolveFeatureAnchor(feature) {
   }
 
   try {
-    const centroid = turf.centroid(feature);
-    const coordinate = turf.getCoord(centroid);
+    const centroid = turfCentroid(feature);
+    const coordinate = getCoord(centroid);
     if (isFiniteCoordinatePair(coordinate)) {
       return coordinate;
     }
@@ -549,7 +552,7 @@ export class GeoMorpher {
       }, centroid));
     }
 
-    return turf.featureCollection(features);
+    return featureCollection(features);
   }
 
   getInterpolatedLookup(factor = 0.5) {

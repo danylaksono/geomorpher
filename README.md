@@ -5,6 +5,8 @@
 
 GeoJSON morphing utilities for animating between regular geography and cartograms, with first-class **MapLibre GL JS** support. Smoothly interpolate between any two aligned GeoJSON geometries and overlay multivariate glyphs that stay in sync.
 
+**[Live demos →](https://danylaksono.is-a.dev/geomorpher/examples/indonesia/)**
+
 ![](demo.gif)
 
 > [!TIP]
@@ -22,6 +24,31 @@ GeoJSON morphing utilities for animating between regular geography and cartogram
 
 ```bash
 npm install geo-morpher
+```
+
+`maplibre-gl` and `leaflet` are **optional peer dependencies** — install only the one you use:
+
+```bash
+npm install maplibre-gl   # or: npm install leaflet
+```
+
+TypeScript declarations ship with the package; no `@types/geo-morpher` needed.
+
+### Via CDN
+
+For a plain `<script>` tag, the bundle exposes a `geoMorpher` global:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/geo-morpher/dist/geo-morpher.global.min.js"></script>
+<script>
+  const morpher = new geoMorpher.GeoMorpher({ /* ... */ });
+</script>
+```
+
+Or as an ES module (also works in Observable):
+
+```js
+import { GeoMorpher } from "https://cdn.jsdelivr.net/npm/geo-morpher/dist/geo-morpher.esm.js";
 ```
 
 ## Quick Start (MapLibre)

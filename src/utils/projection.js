@@ -1,5 +1,6 @@
-import cloneDeep from "lodash/cloneDeep.js";
-import * as turf from "@turf/turf";
+import { coordEach } from "@turf/meta";
+import { featureCollection } from "@turf/helpers";
+import { cloneDeep } from "./lang.js";
 import { OSGB } from "../lib/osgb/index.js";
 
 const DEFAULT_PROJECTION = new OSGB();
@@ -45,7 +46,7 @@ export function toWGS84FeatureCollection(fc, projection = DEFAULT_PROJECTION) {
   const proj = projection || DEFAULT_PROJECTION;
 
   const cloned = cloneDeep(fc);
-  turf.coordEach(cloned, (coord) => {
+  coordEach(cloned, (coord) => {
     const [lng, lat] = proj.toGeo(coord);
     coord[0] = lng;
     coord[1] = lat;
@@ -56,10 +57,10 @@ export function toWGS84FeatureCollection(fc, projection = DEFAULT_PROJECTION) {
   }
 
   if (cloned.type === "Feature") {
-    return turf.featureCollection([cloned]);
+    return featureCollection([cloned]);
   }
 
-  return turf.featureCollection([
+  return featureCollection([
     { type: "Feature", geometry: cloned, properties: {} },
   ]);
 }
